@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowUpRight, Target, Activity } from 'lucide-react'
 
-export function FinancialCards() {
+export function FinancialCards({ totalRevenue = 92000 }: { totalRevenue?: number }) {
   return (
     <div className="grid gap-4 md:grid-cols-3">
       <Card className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground border-none shadow-elevation overflow-hidden relative">
@@ -13,7 +13,9 @@ export function FinancialCards() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold tracking-tight mb-1">R$ 92.000</div>
+          <div className="text-3xl font-bold tracking-tight mb-1">
+            R$ {totalRevenue.toLocaleString('pt-BR')}
+          </div>
           <p className="text-sm text-primary-foreground/90 flex items-center gap-1">
             <ArrowUpRight className="h-4 w-4" />
             +10% (Skip-Optimized)

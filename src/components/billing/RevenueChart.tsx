@@ -6,17 +6,16 @@ import {
   ChartLegend,
   ChartLegendContent,
 } from '@/components/ui/chart'
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts'
-import { REVENUE_DATA } from '@/lib/mock-data'
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 
 const chartConfig = {
   SP: { label: 'São Paulo (SP)', color: 'hsl(var(--chart-1))' },
   MG: { label: 'Minas Gerais (MG)', color: 'hsl(var(--chart-2))' },
 }
 
-export function RevenueChart() {
+export function RevenueChart({ data }: { data?: any[] }) {
   return (
-    <Card className="shadow-sm border-border/50">
+    <Card className="shadow-sm border-border/50 h-full">
       <CardHeader>
         <CardTitle>Receita Mensal (R$)</CardTitle>
         <CardDescription>Crescimento de faturamento por região via engine IoT</CardDescription>
@@ -25,7 +24,7 @@ export function RevenueChart() {
         <ChartContainer config={chartConfig} className="min-h-[300px] w-full">
           <BarChart
             accessibilityLayer
-            data={REVENUE_DATA}
+            data={data || []}
             margin={{ top: 20, right: 0, left: 0, bottom: 0 }}
           >
             <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-muted" />

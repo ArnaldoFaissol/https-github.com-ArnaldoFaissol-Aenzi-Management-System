@@ -5,14 +5,13 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet'
-import { Asset } from '@/lib/mock-data'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Activity, Battery, Calendar, Clock, DollarSign, MapPin, Zap } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 
 interface Props {
-  asset: Asset | null
+  asset: any | null
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -25,23 +24,23 @@ export function AssetDetailSheet({ asset, open, onOpenChange }: Props) {
       <SheetContent className="w-full sm:max-w-md overflow-y-auto">
         <SheetHeader className="mb-6">
           <div className="flex items-center justify-between mt-4">
-            <SheetTitle className="text-2xl">{asset.name}</SheetTitle>
+            <SheetTitle className="text-2xl">{asset.asset_name}</SheetTitle>
             <Badge
               variant="outline"
               className={
-                asset.status === 'Operational'
+                asset.asset_status === 'Operacional'
                   ? 'bg-primary/10 text-primary border-primary/20'
-                  : asset.status === 'Maintenance'
+                  : asset.asset_status === 'Manutenção'
                     ? 'bg-destructive/10 text-destructive border-destructive/20'
                     : 'bg-muted text-muted-foreground'
               }
             >
-              {asset.status}
+              {asset.asset_status}
             </Badge>
           </div>
           <SheetDescription className="flex items-center gap-1.5 mt-1">
             <MapPin className="h-3.5 w-3.5" />
-            Região: {asset.region} | ID: {asset.id}
+            Região: {asset.region} | ID: {asset.fcu_code}
           </SheetDescription>
         </SheetHeader>
 
@@ -55,16 +54,16 @@ export function AssetDetailSheet({ asset, open, onOpenChange }: Props) {
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-muted p-3 rounded-lg border">
                 <span className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
-                  <Zap className="h-3.5 w-3.5" /> Consumo
+                  <Zap className="h-3.5 w-3.5" /> Consumo Total
                 </span>
-                <span className="font-mono text-lg font-medium">{asset.kwh} kWh</span>
+                <span className="font-mono text-lg font-medium">{asset.kwh_total || 0} kWh</span>
               </div>
               <div className="bg-muted p-3 rounded-lg border">
                 <span className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
                   <DollarSign className="h-3.5 w-3.5" /> Receita/Mês
                 </span>
                 <span className="font-mono text-lg font-medium text-primary">
-                  R$ {asset.revenue.toLocaleString('pt-BR')}
+                  R$ {(asset.contract_value || 0).toLocaleString('pt-BR')}
                 </span>
               </div>
             </div>
@@ -74,12 +73,14 @@ export function AssetDetailSheet({ asset, open, onOpenChange }: Props) {
                 <span className="flex items-center gap-1.5 text-muted-foreground">
                   <Battery className="h-4 w-4" /> Nível da Bateria
                 </span>
-                <span className="font-medium">{asset.batteryLevel}%</span>
+                <span className="font-medium">{asset.battery_level || 0}%</span>
               </div>
               <Progress
-                value={asset.batteryLevel}
+                value={asset.battery_level || 0}
                 className="h-2"
-                indicatorClassName={asset.batteryLevel > 20 ? 'bg-primary' : 'bg-destructive'}
+                indicatorClassName={
+                  (asset.battery_level || 0) > 20 ? 'bg-primary' : 'bg-destructive'
+                }
               />
             </div>
           </div>
@@ -96,17 +97,21 @@ export function AssetDetailSheet({ asset, open, onOpenChange }: Props) {
             <ul className="space-y-3">
               <li className="flex justify-between text-sm py-2 border-b">
                 <span className="text-muted-foreground">Data de Instalação</span>
-                <span className="font-medium">{asset.installDate}</span>
+                <span className="font-medium">
+                  {asset.installation_date
+                    ? new Date(asset.installation_date).toLocaleDateString('pt-BR')
+                    : 'Pendente'}
+                </span>
               </li>
               <li className="flex justify-between text-sm py-2 border-b">
                 <span className="text-muted-foreground">Uptime Geral</span>
-                <span className="font-medium">{asset.uptime}%</span>
+                <span className="font-medium">{asset.uptime || 0}%</span>
               </li>
               <li className="flex justify-between text-sm py-2 border-b">
                 <span className="text-muted-foreground flex items-center gap-1">
                   <Clock className="h-3.5 w-3.5" /> MTTR Recente
                 </span>
-                <span className="font-medium text-destructive">{asset.mttr}</span>
+                <span className="font-medium text-destructive">{asset.mttr_hours || 'N/A'} h</span>
               </li>
             </ul>
 

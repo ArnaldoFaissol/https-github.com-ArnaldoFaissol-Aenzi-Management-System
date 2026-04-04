@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Table,
   TableBody,
@@ -9,20 +9,37 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { MOCK_ASSETS, Asset } from '@/lib/mock-data'
 import { AssetDetailSheet } from './AssetDetailSheet'
 import { Input } from '@/components/ui/input'
-import { Search, SlidersHorizontal } from 'lucide-react'
+import { Search, SlidersHorizontal, Loader2 } from 'lucide-react'
+import { getAssets } from '@/services/assets'
 
 export function AssetTable() {
-  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null)
+  const [assets, setAssets] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedAsset, setSelectedAsset] = useState<any | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
 
-  const filteredAssets = MOCK_ASSETS.filter(
+  useEffect(() => {
+    getAssets().then((data) => {
+      setAssets(data)
+      setLoading(false)
+    })
+  }, [])
+
+  const filteredAssets = assets.filter(
     (a) =>
-      a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      a.id.toLowerCase().includes(searchTerm.toLowerCase()),
+      a.asset_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.fcu_code?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center border rounded-lg bg-card">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -62,29 +79,27 @@ export function AssetTable() {
                 className="cursor-pointer hover:bg-muted/50 transition-colors"
                 onClick={() => setSelectedAsset(asset)}
               >
-                <TableCell className="font-mono text-xs">{asset.id}</TableCell>
-                <TableCell className="font-medium">{asset.name}</TableCell>
+                <TableCell className="font-mono text-xs">{asset.fcu_code}</TableCell>
+                <TableCell className="font-medium">{asset.asset_name}</TableCell>
                 <TableCell>
                   <Badge
                     variant="outline"
                     className={
-                      asset.status === 'Operational'
+                      asset.asset_status === 'Operacional'
                         ? 'bg-primary/10 text-primary border-primary/20'
-                        : asset.status === 'Maintenance'
+                        : asset.asset_status === 'Manutenção'
                           ? 'bg-destructive/10 text-destructive border-destructive/20'
                           : 'bg-muted text-muted-foreground border-border'
                     }
                   >
-                    {asset.status === 'Operational'
-                      ? 'Operacional'
-                      : asset.status === 'Maintenance'
-                        ? 'Manutenção'
-                        : 'Backlog'}
+                    {asset.asset_status}
                   </Badge>
                 </TableCell>
                 <TableCell>{asset.region}</TableCell>
                 <TableCell className="text-right font-mono">
-                  {asset.revenue > 0 ? `R$ ${asset.revenue.toLocaleString('pt-BR')}` : '-'}
+                  {asset.contract_value > 0
+                    ? `R$ ${asset.contract_value.toLocaleString('pt-BR')}`
+                    : '-'}
                 </TableCell>
                 <TableCell className="text-right">
                   {asset.uptime > 0 ? (
