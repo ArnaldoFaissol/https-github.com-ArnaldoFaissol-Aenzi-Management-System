@@ -11,59 +11,104 @@ export type Database = {
     Tables: {
       assets: {
         Row: {
+          address: string | null
           asset_name: string
           asset_status: string
+          battery_count: number | null
           battery_level: number | null
+          bluetooth_lock_status: string | null
+          cabinet_type: string | null
           city: string | null
           contract_value: number | null
+          coordinates_raw: string | null
           created_at: string | null
           fcu_code: string | null
+          holder: string | null
+          iams_registration: string | null
           id: string
           installation_date: string | null
+          is_active: boolean | null
+          is_in_stock: boolean | null
           kwh_total: number | null
           latitude: number | null
           longitude: number | null
           mttr_hours: number | null
+          network_type: string | null
+          rack_key_info: string | null
+          rack_serial_number: string | null
+          rectifier_count: number | null
           region: string | null
+          sr_specification: string | null
           uf_code: string | null
+          unit_number: string | null
           updated_at: string | null
           uptime: number | null
         }
         Insert: {
+          address?: string | null
           asset_name: string
           asset_status: string
+          battery_count?: number | null
           battery_level?: number | null
+          bluetooth_lock_status?: string | null
+          cabinet_type?: string | null
           city?: string | null
           contract_value?: number | null
+          coordinates_raw?: string | null
           created_at?: string | null
           fcu_code?: string | null
+          holder?: string | null
+          iams_registration?: string | null
           id?: string
           installation_date?: string | null
+          is_active?: boolean | null
+          is_in_stock?: boolean | null
           kwh_total?: number | null
           latitude?: number | null
           longitude?: number | null
           mttr_hours?: number | null
+          network_type?: string | null
+          rack_key_info?: string | null
+          rack_serial_number?: string | null
+          rectifier_count?: number | null
           region?: string | null
+          sr_specification?: string | null
           uf_code?: string | null
+          unit_number?: string | null
           updated_at?: string | null
           uptime?: number | null
         }
         Update: {
+          address?: string | null
           asset_name?: string
           asset_status?: string
+          battery_count?: number | null
           battery_level?: number | null
+          bluetooth_lock_status?: string | null
+          cabinet_type?: string | null
           city?: string | null
           contract_value?: number | null
+          coordinates_raw?: string | null
           created_at?: string | null
           fcu_code?: string | null
+          holder?: string | null
+          iams_registration?: string | null
           id?: string
           installation_date?: string | null
+          is_active?: boolean | null
+          is_in_stock?: boolean | null
           kwh_total?: number | null
           latitude?: number | null
           longitude?: number | null
           mttr_hours?: number | null
+          network_type?: string | null
+          rack_key_info?: string | null
+          rack_serial_number?: string | null
+          rectifier_count?: number | null
           region?: string | null
+          sr_specification?: string | null
           uf_code?: string | null
+          unit_number?: string | null
           updated_at?: string | null
           uptime?: number | null
         }
@@ -326,6 +371,21 @@ export const Constants = {
 //   mttr_hours: numeric (nullable)
 //   created_at: timestamp with time zone (nullable, default: now())
 //   updated_at: timestamp with time zone (nullable, default: now())
+//   unit_number: text (nullable)
+//   network_type: text (nullable)
+//   cabinet_type: text (nullable)
+//   rack_serial_number: text (nullable)
+//   bluetooth_lock_status: text (nullable)
+//   iams_registration: text (nullable)
+//   coordinates_raw: text (nullable)
+//   address: text (nullable)
+//   rack_key_info: text (nullable)
+//   holder: text (nullable)
+//   battery_count: integer (nullable)
+//   sr_specification: text (nullable)
+//   rectifier_count: integer (nullable)
+//   is_active: boolean (nullable, default: true)
+//   is_in_stock: boolean (nullable, default: false)
 // Table: billing_cycles
 //   id: uuid (not null, default: gen_random_uuid())
 //   month: date (not null)
@@ -400,3 +460,7 @@ export const Constants = {
 // --- INDEXES ---
 // Table: assets
 //   CREATE UNIQUE INDEX assets_fcu_code_key ON public.assets USING btree (fcu_code)
+//   CREATE INDEX idx_assets_city ON public.assets USING btree (city)
+//   CREATE INDEX idx_assets_installation_date ON public.assets USING btree (installation_date)
+//   CREATE INDEX idx_assets_status ON public.assets USING btree (asset_status)
+//   CREATE INDEX idx_assets_uf_code ON public.assets USING btree (uf_code)

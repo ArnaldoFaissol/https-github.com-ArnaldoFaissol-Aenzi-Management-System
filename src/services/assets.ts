@@ -9,6 +9,15 @@ export const getAssets = async () => {
   return data
 }
 
+export const upsertAssets = async (assets: any[]) => {
+  const { data, error } = await supabase
+    .from('assets')
+    .upsert(assets, { onConflict: 'fcu_code' })
+    .select()
+  if (error) throw error
+  return data
+}
+
 export const getRolloutBacklog = async () => {
   const { data, error } = await supabase
     .from('rollout_backlog')
