@@ -66,6 +66,7 @@ export function AssetTable() {
               <TableHead className="w-[120px]">ID Gabinete</TableHead>
               <TableHead>Nome do Site</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Gabinete</TableHead>
               <TableHead>Região</TableHead>
               <TableHead className="text-right">Receita/Mês</TableHead>
               <TableHead className="text-right">Uptime</TableHead>
@@ -85,17 +86,27 @@ export function AssetTable() {
                   <Badge
                     variant="outline"
                     className={
-                      asset.asset_status === 'Operacional'
+                      asset.asset_status === 'Operacional' || asset.asset_status === 'Ativo'
                         ? 'bg-primary/10 text-primary border-primary/20'
                         : asset.asset_status === 'Manutenção'
                           ? 'bg-destructive/10 text-destructive border-destructive/20'
-                          : 'bg-muted text-muted-foreground border-border'
+                          : asset.asset_status === 'Em Estoque'
+                            ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                            : 'bg-muted text-muted-foreground border-border'
                     }
                   >
                     {asset.asset_status}
                   </Badge>
                 </TableCell>
-                <TableCell>{asset.region}</TableCell>
+                <TableCell
+                  className="text-muted-foreground truncate max-w-[120px]"
+                  title={asset.cabinet_type || '-'}
+                >
+                  {asset.cabinet_type || '-'}
+                </TableCell>
+                <TableCell>
+                  {asset.region} {asset.uf_code ? `(${asset.uf_code})` : ''}
+                </TableCell>
                 <TableCell className="text-right font-mono">
                   {asset.contract_value > 0
                     ? `R$ ${asset.contract_value.toLocaleString('pt-BR')}`
