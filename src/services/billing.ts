@@ -1,10 +1,13 @@
 import { supabase } from '@/lib/supabase/client'
 
-export const getBillingCycles = async () => {
+export const getBillingCycles = async (): Promise<any[]> => {
   const { data, error } = await supabase
     .from('billing_cycles')
-    .select('*')
+    .select(
+      'id, month, region, revenue, asset_id, taxes, deductions, opex, created_at, assets(fcu_code, asset_name, contract_value, region)' as any,
+    )
     .order('month', { ascending: true })
+
   if (error) throw error
-  return data
+  return data || []
 }
