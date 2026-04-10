@@ -20,6 +20,8 @@ import {
   Network,
   Lock,
   Info,
+  Briefcase,
+  AlertCircle,
 } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 
@@ -41,27 +43,28 @@ export function AssetDetailSheet({ asset, open, onOpenChange }: Props) {
             <Badge
               variant="outline"
               className={
-                asset.asset_status === 'Operacional' || asset.asset_status === 'Ativo'
+                asset.asset_state === 'Operacional' || asset.asset_state === 'Ativo'
                   ? 'bg-primary/10 text-primary border-primary/20'
-                  : asset.asset_status === 'Manutenção'
+                  : asset.asset_state === 'Manutenção'
                     ? 'bg-destructive/10 text-destructive border-destructive/20'
                     : 'bg-muted text-muted-foreground'
               }
             >
-              {asset.asset_status}
+              {asset.asset_state || 'N/D'}
             </Badge>
           </div>
           <SheetDescription className="flex items-center gap-1.5 mt-1">
             <MapPin className="h-3.5 w-3.5" />
-            Região: {asset.region} {asset.uf_code ? `(${asset.uf_code})` : ''} | ID:{' '}
+            {asset.city || 'Cidade N/D'} {asset.uf_code ? `(${asset.uf_code})` : ''} | ID:{' '}
             {asset.fcu_code}
           </SheetDescription>
         </SheetHeader>
 
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="general">Geral</TabsTrigger>
             <TabsTrigger value="technical">Técnico</TabsTrigger>
+            <TabsTrigger value="process">Processo</TabsTrigger>
             <TabsTrigger value="location">Local.</TabsTrigger>
           </TabsList>
 
@@ -173,6 +176,14 @@ export function AssetDetailSheet({ asset, open, onOpenChange }: Props) {
                   <span className="text-muted-foreground">Especificação SRs</span>
                   <span className="font-medium">{asset.sr_specification || 'N/D'}</span>
                 </li>
+                <li className="flex justify-between text-sm py-2 border-b">
+                  <span className="text-muted-foreground">Ar Condicionado</span>
+                  <span className="font-medium">{asset.air_conditioner || 'N/D'}</span>
+                </li>
+                <li className="flex justify-between text-sm py-2 border-b">
+                  <span className="text-muted-foreground">Blindado</span>
+                  <span className="font-medium">{asset.armored || 'N/D'}</span>
+                </li>
               </ul>
             </div>
 
@@ -199,6 +210,38 @@ export function AssetDetailSheet({ asset, open, onOpenChange }: Props) {
             </div>
           </TabsContent>
 
+          <TabsContent value="process" className="mt-4 space-y-4">
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold flex items-center gap-2 text-foreground">
+                <Briefcase className="h-4 w-4 text-primary" />
+                Processo e Implantação
+              </h4>
+
+              <ul className="space-y-3">
+                <li className="flex flex-col text-sm py-2 border-b gap-1">
+                  <span className="text-muted-foreground">Etapa Atual</span>
+                  <span className="font-medium">{asset.step_number || 'N/D'}</span>
+                </li>
+                <li className="flex flex-col text-sm py-2 border-b gap-1">
+                  <span className="text-muted-foreground">Status do Processo</span>
+                  <Badge variant="secondary" className="w-fit">
+                    {asset.process_status || 'N/D'}
+                  </Badge>
+                </li>
+                <li className="flex justify-between text-sm py-2 border-b">
+                  <span className="text-muted-foreground flex items-center gap-1">
+                    <AlertCircle className="h-3.5 w-3.5" /> Pendências
+                  </span>
+                  <span className="font-medium">{asset.pendency ?? 0}</span>
+                </li>
+                <li className="flex justify-between text-sm py-2 border-b">
+                  <span className="text-muted-foreground">Concessionária (Utility)</span>
+                  <span className="font-medium">{asset.utility || 'N/D'}</span>
+                </li>
+              </ul>
+            </div>
+          </TabsContent>
+
           <TabsContent value="location" className="mt-4 space-y-4">
             <div className="space-y-4">
               <h4 className="text-sm font-semibold flex items-center gap-2 text-foreground">
@@ -217,15 +260,12 @@ export function AssetDetailSheet({ asset, open, onOpenChange }: Props) {
                     {asset.city || 'N/D'} {asset.uf_code ? `/ ${asset.uf_code}` : ''}
                   </span>
                 </li>
-                <li className="flex justify-between text-sm py-2 border-b">
-                  <span className="text-muted-foreground">Regional</span>
-                  <span className="font-medium">{asset.region || 'N/D'}</span>
-                </li>
                 <li className="flex flex-col text-sm py-2 border-b gap-1">
-                  <span className="text-muted-foreground">Coordenadas (Raw)</span>
+                  <span className="text-muted-foreground">Coordenadas</span>
                   <span className="font-mono text-xs text-muted-foreground">
-                    {asset.coordinates_raw ||
-                      (asset.latitude ? `${asset.latitude}, ${asset.longitude}` : 'N/D')}
+                    {asset.latitude && asset.longitude
+                      ? `${asset.latitude}, ${asset.longitude}`
+                      : 'N/D'}
                   </span>
                 </li>
                 <li className="flex justify-between text-sm py-2 border-b">

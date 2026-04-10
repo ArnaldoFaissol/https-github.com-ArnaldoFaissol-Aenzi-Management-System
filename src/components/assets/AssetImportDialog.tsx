@@ -75,9 +75,8 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
     return {
       fcu_code: fcu,
       asset_name: getVal(['nome', 'ativo', 'site', 'name']) || `Ativo ${fcu}`,
-      asset_status: getVal(['status']) || 'Operacional',
-      region: getVal(['região', 'regiao', 'regional', 'region']),
-      uf_code: getVal(['uf', 'estado']),
+      asset_state: getVal(['status', 'estado']) || 'Operacional',
+      uf_code: getVal(['uf', 'estado', 'state']),
       city: getVal(['cidade', 'município', 'municipio', 'city']),
       cabinet_type: getVal(['gabinete', 'cabinet', 'tipogabinete']),
       rack_serial_number: getVal(['serial', 'série', 'serie']),
@@ -87,7 +86,12 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
       network_type: getVal(['rede', 'network']),
       is_active: getVal(['ativo', 'active'])?.toLowerCase() !== 'não',
       is_in_stock: getVal(['estoque', 'stock'])?.toLowerCase() === 'sim',
-      coordinates_raw: getVal(['coord', 'lat']),
+      utility: getVal(['concessionária', 'concessionaria', 'utility']),
+      pendency: parseInt(getVal(['pendência', 'pendencia', 'pendency']) || '0') || 0,
+      step_number: getVal(['etapa', 'step']),
+      process_status: getVal(['status do processo', 'processo', 'process_status']),
+      air_conditioner: getVal(['ar condicionado', 'ar', 'ac']),
+      armored: getVal(['blindado', 'blindagem', 'armored']),
     }
   }
 

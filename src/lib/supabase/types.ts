@@ -12,15 +12,16 @@ export type Database = {
       assets: {
         Row: {
           address: string | null
+          air_conditioner: string | null
+          armored: string | null
           asset_name: string
-          asset_status: string
+          asset_state: string
           battery_count: number | null
           battery_level: number | null
           bluetooth_lock_status: string | null
           cabinet_type: string | null
           city: string | null
           contract_value: number | null
-          coordinates_raw: string | null
           created_at: string | null
           fcu_code: string | null
           holder: string | null
@@ -29,32 +30,34 @@ export type Database = {
           installation_date: string | null
           is_active: boolean | null
           is_in_stock: boolean | null
-          kwh_total: number | null
           latitude: number | null
           longitude: number | null
           mttr_hours: number | null
           network_type: string | null
+          pendency: number | null
+          process_status: string | null
           rack_key_info: string | null
           rack_serial_number: string | null
           rectifier_count: number | null
-          region: string | null
           sr_specification: string | null
+          step_number: string | null
           uf_code: string | null
-          unit_number: string | null
           updated_at: string | null
           uptime: number | null
+          utility: string | null
         }
         Insert: {
           address?: string | null
+          air_conditioner?: string | null
+          armored?: string | null
           asset_name: string
-          asset_status: string
+          asset_state: string
           battery_count?: number | null
           battery_level?: number | null
           bluetooth_lock_status?: string | null
           cabinet_type?: string | null
           city?: string | null
           contract_value?: number | null
-          coordinates_raw?: string | null
           created_at?: string | null
           fcu_code?: string | null
           holder?: string | null
@@ -63,32 +66,34 @@ export type Database = {
           installation_date?: string | null
           is_active?: boolean | null
           is_in_stock?: boolean | null
-          kwh_total?: number | null
           latitude?: number | null
           longitude?: number | null
           mttr_hours?: number | null
           network_type?: string | null
+          pendency?: number | null
+          process_status?: string | null
           rack_key_info?: string | null
           rack_serial_number?: string | null
           rectifier_count?: number | null
-          region?: string | null
           sr_specification?: string | null
+          step_number?: string | null
           uf_code?: string | null
-          unit_number?: string | null
           updated_at?: string | null
           uptime?: number | null
+          utility?: string | null
         }
         Update: {
           address?: string | null
+          air_conditioner?: string | null
+          armored?: string | null
           asset_name?: string
-          asset_status?: string
+          asset_state?: string
           battery_count?: number | null
           battery_level?: number | null
           bluetooth_lock_status?: string | null
           cabinet_type?: string | null
           city?: string | null
           contract_value?: number | null
-          coordinates_raw?: string | null
           created_at?: string | null
           fcu_code?: string | null
           holder?: string | null
@@ -97,46 +102,67 @@ export type Database = {
           installation_date?: string | null
           is_active?: boolean | null
           is_in_stock?: boolean | null
-          kwh_total?: number | null
           latitude?: number | null
           longitude?: number | null
           mttr_hours?: number | null
           network_type?: string | null
+          pendency?: number | null
+          process_status?: string | null
           rack_key_info?: string | null
           rack_serial_number?: string | null
           rectifier_count?: number | null
-          region?: string | null
           sr_specification?: string | null
+          step_number?: string | null
           uf_code?: string | null
-          unit_number?: string | null
           updated_at?: string | null
           uptime?: number | null
+          utility?: string | null
         }
         Relationships: []
       }
       billing_cycles: {
         Row: {
+          asset_id: string | null
           created_at: string | null
+          deductions: number | null
           id: string
           month: string
+          opex: number | null
           region: string
           revenue: number
+          taxes: number | null
         }
         Insert: {
+          asset_id?: string | null
           created_at?: string | null
+          deductions?: number | null
           id?: string
           month: string
+          opex?: number | null
           region: string
           revenue: number
+          taxes?: number | null
         }
         Update: {
+          asset_id?: string | null
           created_at?: string | null
+          deductions?: number | null
           id?: string
           month?: string
+          opex?: number | null
           region?: string
           revenue?: number
+          taxes?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: 'billing_cycles_asset_id_fkey'
+            columns: ['asset_id']
+            isOneToOne: false
+            referencedRelation: 'assets'
+            referencedColumns: ['id']
+          },
+        ]
       }
       rollout_backlog: {
         Row: {
@@ -357,8 +383,8 @@ export const Constants = {
 //   id: uuid (not null, default: gen_random_uuid())
 //   fcu_code: text (nullable)
 //   asset_name: text (not null)
-//   asset_status: text (not null)
-//   region: text (nullable)
+//   asset_state: text (not null)
+//   utility: text (nullable)
 //   uf_code: text (nullable)
 //   city: text (nullable)
 //   installation_date: date (nullable)
@@ -367,31 +393,37 @@ export const Constants = {
 //   battery_level: integer (nullable, default: 100)
 //   contract_value: numeric (nullable)
 //   uptime: numeric (nullable, default: 100.0)
-//   kwh_total: numeric (nullable, default: 0)
+//   pendency: numeric (nullable, default: 0)
 //   mttr_hours: numeric (nullable)
 //   created_at: timestamp with time zone (nullable, default: now())
 //   updated_at: timestamp with time zone (nullable, default: now())
-//   unit_number: text (nullable)
+//   step_number: text (nullable)
 //   network_type: text (nullable)
 //   cabinet_type: text (nullable)
 //   rack_serial_number: text (nullable)
 //   bluetooth_lock_status: text (nullable)
 //   iams_registration: text (nullable)
-//   coordinates_raw: text (nullable)
+//   process_status: text (nullable)
 //   address: text (nullable)
 //   rack_key_info: text (nullable)
 //   holder: text (nullable)
 //   battery_count: integer (nullable)
-//   sr_specification: text (nullable)
 //   rectifier_count: integer (nullable)
 //   is_active: boolean (nullable, default: true)
 //   is_in_stock: boolean (nullable, default: false)
+//   sr_specification: text (nullable)
+//   air_conditioner: text (nullable)
+//   armored: text (nullable)
 // Table: billing_cycles
 //   id: uuid (not null, default: gen_random_uuid())
 //   month: date (not null)
 //   region: text (not null)
 //   revenue: numeric (not null)
 //   created_at: timestamp with time zone (nullable, default: now())
+//   asset_id: uuid (nullable)
+//   taxes: numeric (nullable, default: 0)
+//   deductions: numeric (nullable, default: 0)
+//   opex: numeric (nullable, default: 0)
 // Table: rollout_backlog
 //   id: uuid (not null, default: gen_random_uuid())
 //   site_id: text (not null)
@@ -413,6 +445,7 @@ export const Constants = {
 //   UNIQUE assets_fcu_code_key: UNIQUE (fcu_code)
 //   PRIMARY KEY assets_pkey: PRIMARY KEY (id)
 // Table: billing_cycles
+//   FOREIGN KEY billing_cycles_asset_id_fkey: FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE
 //   PRIMARY KEY billing_cycles_pkey: PRIMARY KEY (id)
 // Table: rollout_backlog
 //   PRIMARY KEY rollout_backlog_pkey: PRIMARY KEY (id)
@@ -462,5 +495,5 @@ export const Constants = {
 //   CREATE UNIQUE INDEX assets_fcu_code_key ON public.assets USING btree (fcu_code)
 //   CREATE INDEX idx_assets_city ON public.assets USING btree (city)
 //   CREATE INDEX idx_assets_installation_date ON public.assets USING btree (installation_date)
-//   CREATE INDEX idx_assets_status ON public.assets USING btree (asset_status)
+//   CREATE INDEX idx_assets_status ON public.assets USING btree (asset_state)
 //   CREATE INDEX idx_assets_uf_code ON public.assets USING btree (uf_code)

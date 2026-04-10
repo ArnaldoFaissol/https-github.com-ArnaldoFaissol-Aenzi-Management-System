@@ -66,8 +66,8 @@ export function AssetTable() {
               <TableHead className="w-[120px]">ID Gabinete</TableHead>
               <TableHead>Nome do Site</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Gabinete</TableHead>
-              <TableHead>Região</TableHead>
+              <TableHead>Etapa / Processo</TableHead>
+              <TableHead>Localidade</TableHead>
               <TableHead className="text-right">Receita/Mês</TableHead>
               <TableHead className="text-right">Uptime</TableHead>
               <TableHead className="text-right"></TableHead>
@@ -86,26 +86,31 @@ export function AssetTable() {
                   <Badge
                     variant="outline"
                     className={
-                      asset.asset_status === 'Operacional' || asset.asset_status === 'Ativo'
+                      asset.asset_state === 'Operacional' || asset.asset_state === 'Ativo'
                         ? 'bg-primary/10 text-primary border-primary/20'
-                        : asset.asset_status === 'Manutenção'
+                        : asset.asset_state === 'Manutenção'
                           ? 'bg-destructive/10 text-destructive border-destructive/20'
-                          : asset.asset_status === 'Em Estoque'
+                          : asset.asset_state === 'Em Estoque'
                             ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
                             : 'bg-muted text-muted-foreground border-border'
                     }
                   >
-                    {asset.asset_status}
+                    {asset.asset_state || 'N/D'}
                   </Badge>
                 </TableCell>
-                <TableCell
-                  className="text-muted-foreground truncate max-w-[120px]"
-                  title={asset.cabinet_type || '-'}
-                >
-                  {asset.cabinet_type || '-'}
+                <TableCell>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">{asset.step_number || '-'}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {asset.process_status || '-'}
+                    </span>
+                  </div>
                 </TableCell>
                 <TableCell>
-                  {asset.region} {asset.uf_code ? `(${asset.uf_code})` : ''}
+                  <div className="flex flex-col">
+                    <span className="text-sm">{asset.city || '-'}</span>
+                    <span className="text-xs text-muted-foreground">{asset.uf_code || '-'}</span>
+                  </div>
                 </TableCell>
                 <TableCell className="text-right font-mono">
                   {asset.contract_value > 0
