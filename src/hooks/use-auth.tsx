@@ -1,10 +1,9 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { User, Session } from '@supabase/supabase-js'
-import { supabase as skipCloud } from '@/lib/supabase/client'
+import pb from '@/lib/pocketbase/client'
 
 interface AuthContextType {
-  user: User | null
-  session: Session | null
+  user: any
+  session: any
   signUp: (email: string, password: string) => Promise<{ error: any }>
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signOut: () => Promise<{ error: any }>
@@ -20,43 +19,50 @@ export const useAuth = () => {
 }
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null)
-  const [session, setSession] = useState<Session | null>(null)
+  const [user, setUser] = useState<any>(pb.authStore.record)
+  const [session, setSession] = useState<any>(
+    pb.authStore.token ? { access_token: pb.authStore.token } : null,
+  )
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = skipCloud.auth.onAuthStateChange((event, session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
+    setUser(pb.authStore.record)
+    setSession(pb.authStore.token ? { access_token: pb.authStore.token } : null)
+
+    const unsubscribe = pb.authStore.onChange((token, record) => {
+      setUser(record)
+      setSession(token ? { access_token: token } : null)
     })
-    skipCloud.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
-    return () => subscription.unsubscribe()
+
+    setLoading(false)
+
+    return () => {
+      unsubscribe()
+    }
   }, [])
 
   const signUp = async (email: string, password: string) => {
-    const { error } = await skipCloud.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: `${window.location.origin}/` },
-    })
-    return { error }
+    try {
+      await pb.collection('users').create({ email, password, passwordConfirm: password })
+      await pb.collection('users').authWithPassword(email, password)
+      return { error: null }
+    } catch (error) {
+      return { error }
+    }
   }
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await skipCloud.auth.signInWithPassword({ email, password })
-    return { error }
+    try {
+      await pb.collection('users').authWithPassword(email, password)
+      return { error: null }
+    } catch (error) {
+      return { error }
+    }
   }
 
   const signOut = async () => {
-    const { error } = await skipCloud.auth.signOut()
-    return { error }
+    pb.authStore.clear()
+    return { error: null }
   }
 
   return (
