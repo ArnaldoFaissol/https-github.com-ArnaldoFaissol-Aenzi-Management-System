@@ -1,49 +1,167 @@
-import { useState } from 'react'
-import { AssetTable } from '@/components/assets/AssetTable'
+import { useState, useEffect } from 'react'
+import { getAssets } from '@/services/assets'
+import { useRealtime } from '@/hooks/use-realtime'
+import { AssetDetailSheet } from '@/components/assets/AssetDetailSheet'
 import { AssetImportDialog } from '@/components/assets/AssetImportDialog'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Upload } from 'lucide-react'
+import { Search, Upload, Loader2, Server } from 'lucide-react'
 
 export default function Assets() {
-  const [importOpen, setImportOpen] = useState(false)
+  const [assets, setAssets] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [selectedAsset, setSelectedAsset] = useState<any>(null)
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [isImportOpen, setIsImportOpen] = useState(false)
+
+  const loadAssets = async () => {
+    try {
+      const data = await getAssets()
+      setAssets(data)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadAssets()
+  }, [])
+
+  useRealtime('assets', () => {
+    loadAssets()
+  })
+
+  const filteredAssets = assets.filter(
+    (a) =>
+      a.fcu_code?.toLowerCase().includes(search.toLowerCase()) ||
+      a.asset_name?.toLowerCase().includes(search.toLowerCase()) ||
+      a.city?.toLowerCase().includes(search.toLowerCase()),
+  )
 
   return (
-    <div className="flex flex-col gap-6 animate-slide-up">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div className="flex flex-col gap-6 p-6 w-full max-w-7xl mx-auto animate-fade-in-up">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">
-              Ativos & Telemetria
-            </h1>
-            <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">
-              Skip Cloud Sync
-            </Badge>
-          </div>
-          <p className="text-muted-foreground">
-            Gestão detalhada dos gabinetes operacionais e monitoramento IoT em tempo real.
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <Server className="h-8 w-8 text-primary" />
+            Ativos Técnicos
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Gerencie o inventário e as especificações de todos os sites e gabinetes.
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-4 bg-muted/50 p-3 rounded-lg border">
-            <div className="flex flex-col">
-              <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                Total em Operação
-              </span>
-              <span className="text-xl font-bold text-primary">
-                16 <span className="text-sm font-normal text-muted-foreground">/ 4000 metas</span>
-              </span>
-            </div>
-          </div>
-          <Button className="gap-2 shrink-0 shadow-sm" onClick={() => setImportOpen(true)}>
-            <Upload className="h-4 w-4" /> Importar CSV
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setIsImportOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" />
+            Importar CSV
           </Button>
         </div>
       </div>
 
-      <AssetTable />
+      <div className="flex items-center gap-2 max-w-md">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por ID, nome ou cidade..."
+            className="pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
 
-      <AssetImportDialog open={importOpen} onOpenChange={setImportOpen} />
+      <div className="border rounded-md bg-card overflow-hidden">
+        <Table>
+          <TableHeader className="bg-muted/50">
+            <TableRow>
+              <TableHead>ID FCU</TableHead>
+              <TableHead>Nome do Ativo</TableHead>
+              <TableHead>Localidade</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={5} className="h-32 text-center">
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+                </TableCell>
+              </TableRow>
+            ) : filteredAssets.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
+                  Nenhum ativo encontrado.
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredAssets.map((asset) => (
+                <TableRow
+                  key={asset.id}
+                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => {
+                    setSelectedAsset(asset)
+                    setIsDetailOpen(true)
+                  }}
+                >
+                  <TableCell className="font-medium">{asset.fcu_code}</TableCell>
+                  <TableCell>{asset.asset_name}</TableCell>
+                  <TableCell>
+                    {asset.city} {asset.uf_code ? `- ${asset.uf_code}` : ''}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        asset.asset_state === 'Operacional'
+                          ? 'default'
+                          : asset.asset_state === 'Desativado'
+                            ? 'destructive'
+                            : 'secondary'
+                      }
+                    >
+                      {asset.asset_state || 'N/D'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="sm">
+                      Ver Detalhes
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <AssetDetailSheet
+        asset={selectedAsset}
+        open={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+        onUpdate={() => {
+          loadAssets()
+        }}
+      />
+
+      <AssetImportDialog
+        open={isImportOpen}
+        onOpenChange={setIsImportOpen}
+        onSuccess={() => {
+          setIsImportOpen(false)
+        }}
+      />
     </div>
   )
 }

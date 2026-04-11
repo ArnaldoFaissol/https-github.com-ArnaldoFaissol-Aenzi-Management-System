@@ -62,11 +62,23 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
     if (!val) return null
     const cleaned = val
       .toString()
+      .trim()
       .replace(/[R$\s]/g, '')
-      .replace(/\./g, '')
-      .replace(',', '.')
-    const num = parseFloat(cleaned)
-    return isNaN(num) ? null : num
+    if (cleaned.includes(',') && cleaned.includes('.')) {
+      if (cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')) {
+        const num = parseFloat(cleaned.replace(/\./g, '').replace(',', '.'))
+        return isNaN(num) ? null : num
+      } else {
+        const num = parseFloat(cleaned.replace(/,/g, ''))
+        return isNaN(num) ? null : num
+      }
+    } else if (cleaned.includes(',')) {
+      const num = parseFloat(cleaned.replace(',', '.'))
+      return isNaN(num) ? null : num
+    } else {
+      const num = parseFloat(cleaned)
+      return isNaN(num) ? null : num
+    }
   }
 
   const parseDate = (val: string | null | undefined) => {
@@ -83,47 +95,87 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
     return isNaN(d.getTime()) ? null : d.toISOString()
   }
 
-  const mapToAsset = (row: Record<string, string>) => {
-    const getVal = (keys: string[]) => {
+  const processCSV = (rows: Record<string, string>[]) => {
+    const assets = []
+
+    const getVal = (row: Record<string, string>, keys: string[]) => {
       const key = Object.keys(row).find((k) =>
         keys.some((match) => k.toLowerCase().includes(match.toLowerCase())),
       )
       return key ? row[key] : null
     }
 
-    const fcu = getVal(['fcu', 'código', 'codigo'])
-    if (!fcu) return null
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i]
+      const fcu = getVal(row, ['fcu', 'código', 'codigo'])
+      if (!fcu) continue
 
-    return {
-      fcu_code: fcu,
-      asset_name: getVal(['nome', 'ativo', 'site', 'name']) || `Ativo ${fcu}`,
-      asset_state: getVal(['status', 'estado']) || 'Operacional',
-      uf_code: getVal(['uf', 'estado', 'state']),
-      city: getVal(['cidade', 'município', 'municipio', 'city']),
-      cabinet_type: getVal(['gabinete', 'cabinet', 'tipogabinete']),
-      rack_serial_number: getVal(['serial', 'série', 'serie']),
-      address: getVal(['endereço', 'endereco', 'address', 'local']),
-      battery_count: parseNumber(getVal(['bateria', 'battery', 'qtd. baterias'])),
-      rectifier_count: parseNumber(
-        getVal(['retificador', 'rectifier', 'número de retificadores', 'numero de retificadores']),
-      ),
-      network_type: getVal(['rede', 'network']),
-      is_active: getVal(['ativo', 'active'])?.toLowerCase() !== 'não',
-      is_in_stock: getVal(['estoque', 'stock'])?.toLowerCase() === 'sim',
-      utility: getVal(['concessionária', 'concessionaria', 'utility']),
-      pendency: parseNumber(getVal(['pendência', 'pendencia', 'pendency'])) || 0,
-      step_number: getVal(['etapa', 'step']),
-      process_status: getVal(['status do processo', 'processo', 'process_status']),
-      air_conditioned: getVal(['ar condicionado', 'ar_conditioned', 'ac']),
-      armored: getVal(['blindado', 'blindagem', 'armored']),
-      contract_value: parseNumber(getVal(['receita', 'contract_value', 'valor', 'receita/mês'])),
-      installation_date: parseDate(
-        getVal(['data de instalação', 'instalação', 'installation_date', 'data']),
-      ),
-      latitude: parseNumber(getVal(['lat', 'latitude'])),
-      longitude: parseNumber(getVal(['lon', 'longitude'])),
-      sr_specification: getVal(['espec', 'sr_spec', 'especificação', 'espec. retificadores']),
+      const rawContractValue = getVal(row, ['receita', 'contract_value', 'valor', 'receita/mês'])
+      const contract_value = parseNumber(rawContractValue)
+      if (rawContractValue && rawContractValue.trim() !== '' && contract_value === null) {
+        throw new Error(
+          `Linha ${i + 2} (FCU: ${fcu}): Valor inválido para Receita/Mês ("${rawContractValue}"). Deve ser numérico.`,
+        )
+      }
+
+      const rawLat = getVal(row, ['lat', 'latitude'])
+      const rawLon = getVal(row, ['lon', 'longitude'])
+      let latitude = parseNumber(rawLat)
+      let longitude = parseNumber(rawLon)
+
+      if (latitude === null && longitude === null) {
+        const coords = getVal(row, ['coordenadas', 'coordinates', 'coord'])
+        if (coords) {
+          const parts = coords.split(',').map((p) => p.trim())
+          if (parts.length === 2) {
+            latitude = parseNumber(parts[0])
+            longitude = parseNumber(parts[1])
+          }
+        }
+      }
+
+      assets.push({
+        fcu_code: fcu,
+        asset_name: getVal(row, ['nome', 'ativo', 'site', 'name']) || `Ativo ${fcu}`,
+        asset_state: getVal(row, ['status', 'estado']) || 'Operacional',
+        uf_code: getVal(row, ['uf', 'estado', 'state']),
+        city: getVal(row, ['cidade', 'município', 'municipio', 'city']),
+        cabinet_type: getVal(row, ['gabinete', 'cabinet', 'tipogabinete']),
+        rack_serial_number: getVal(row, ['serial', 'série', 'serie']),
+        address: getVal(row, ['endereço', 'endereco', 'address', 'local']),
+        battery_count: parseNumber(getVal(row, ['bateria', 'battery', 'qtd. baterias'])),
+        rectifier_count: parseNumber(
+          getVal(row, [
+            'retificador',
+            'rectifier',
+            'número de retificadores',
+            'numero de retificadores',
+          ]),
+        ),
+        network_type: getVal(row, ['rede', 'network']),
+        is_active: getVal(row, ['ativo', 'active'])?.toLowerCase() !== 'não',
+        is_in_stock: getVal(row, ['estoque', 'stock'])?.toLowerCase() === 'sim',
+        utility: getVal(row, ['concessionária', 'concessionaria', 'utility']),
+        pendency: parseNumber(getVal(row, ['pendência', 'pendencia', 'pendency'])) || 0,
+        step_number: getVal(row, ['etapa', 'step']),
+        process_status: getVal(row, ['status do processo', 'processo', 'process_status']),
+        air_conditioned: getVal(row, ['ar condicionado', 'ar_conditioned', 'ac']),
+        armored: getVal(row, ['blindado', 'blindagem', 'armored']),
+        contract_value,
+        installation_date: parseDate(
+          getVal(row, ['data de instalação', 'instalação', 'installation_date', 'data']),
+        ),
+        latitude,
+        longitude,
+        sr_specification: getVal(row, [
+          'espec',
+          'sr_spec',
+          'especificação',
+          'espec. retificadores',
+        ]),
+      })
     }
+    return assets
   }
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -138,7 +190,7 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
       setProgress(30)
       const rows = parseCSV(text)
       setProgress(50)
-      const assets = rows.map(mapToAsset).filter(Boolean)
+      const assets = processCSV(rows)
 
       if (assets.length === 0) {
         throw new Error(
@@ -163,7 +215,7 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
       if (onSuccess) onSuccess()
     } catch (err: any) {
       console.error('Erro na importação:', err)
-      setErrorMessage(getErrorMessage(err))
+      setErrorMessage(err.message || getErrorMessage(err))
       setStep('error')
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = ''

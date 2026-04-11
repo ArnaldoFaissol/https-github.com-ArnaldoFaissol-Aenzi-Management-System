@@ -1,4 +1,5 @@
 import pb from '@/lib/pocketbase/client'
+import { getErrorMessage } from '@/lib/pocketbase/errors'
 
 export const ACTIVATION_STEPS = [
   { id: '0', title: '0. Identificação do Site', responsible: 'VIVO' },
@@ -27,18 +28,22 @@ export const upsertAssets = async (assets: any[]) => {
     if (!asset.fcu_code) continue
 
     try {
-      const existing = await pb
-        .collection('assets')
-        .getFirstListItem(`fcu_code="${asset.fcu_code}"`)
-      const updated = await pb.collection('assets').update(existing.id, asset)
-      results.push(updated)
-    } catch (err: any) {
-      if (err.status === 404) {
-        const created = await pb.collection('assets').create(asset)
-        results.push(created)
-      } else {
-        throw err
+      try {
+        const existing = await pb
+          .collection('assets')
+          .getFirstListItem(`fcu_code="${asset.fcu_code}"`)
+        const updated = await pb.collection('assets').update(existing.id, asset)
+        results.push(updated)
+      } catch (err: any) {
+        if (err.status === 404) {
+          const created = await pb.collection('assets').create(asset)
+          results.push(created)
+        } else {
+          throw err
+        }
       }
+    } catch (err: any) {
+      throw new Error(`FCU ${asset.fcu_code}: ${getErrorMessage(err)}`)
     }
   }
   return results
@@ -49,7 +54,6 @@ export const updateAsset = async (id: string, data: any) => {
 }
 
 export const getRolloutBacklog = async () => {
-  // Mock data for rollout backlog to ensure UI doesn't crash since it's not part of current schema
   return []
 }
 

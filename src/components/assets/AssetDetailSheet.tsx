@@ -12,6 +12,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   Activity,
   Battery,
   Calendar,
@@ -77,31 +84,50 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
   const renderRow = (
     label: string,
     field: string,
-    type: 'text' | 'number' | 'date' = 'text',
+    type: 'text' | 'number' | 'date' | 'select' = 'text',
     icon?: React.ReactNode,
+    options?: { value: string; label: string }[],
   ) => {
     if (isEditing) {
       return (
         <li className="flex flex-col py-2 border-b gap-1">
           <Label className="text-muted-foreground text-xs">{label}</Label>
-          <Input
-            type={type}
-            value={
-              editData[field] === null || editData[field] === undefined
-                ? ''
-                : type === 'date' && editData[field]
-                  ? editData[field].split('T')[0]
-                  : editData[field]
-            }
-            onChange={(e) => {
-              const val = e.target.value
-              setEditData((prev: any) => ({
-                ...prev,
-                [field]: type === 'number' ? (val === '' ? null : Number(val)) : val,
-              }))
-            }}
-            className="h-8 text-sm"
-          />
+          {type === 'select' && options ? (
+            <Select
+              value={editData[field] || ''}
+              onValueChange={(val) => setEditData((prev: any) => ({ ...prev, [field]: val }))}
+            >
+              <SelectTrigger className="h-8 text-sm w-full">
+                <SelectValue placeholder="Selecione..." />
+              </SelectTrigger>
+              <SelectContent>
+                {options.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <Input
+              type={type}
+              value={
+                editData[field] === null || editData[field] === undefined
+                  ? ''
+                  : type === 'date' && editData[field]
+                    ? editData[field].split('T')[0]
+                    : editData[field]
+              }
+              onChange={(e) => {
+                const val = e.target.value
+                setEditData((prev: any) => ({
+                  ...prev,
+                  [field]: type === 'number' ? (val === '' ? null : Number(val)) : val,
+                }))
+              }}
+              className="h-8 text-sm w-full"
+            />
+          )}
           {errors[field] && <span className="text-[10px] text-destructive">{errors[field]}</span>}
         </li>
       )
@@ -109,14 +135,14 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
 
     let displayVal = localAsset[field]
     if (type === 'date' && displayVal) {
-      displayVal = new Date(displayVal).toLocaleDateString('pt-BR')
+      displayVal = new Date(displayVal).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
     } else if (displayVal === null || displayVal === undefined || displayVal === '') {
       displayVal = 'N/D'
     }
 
     return (
       <li className="flex justify-between items-center text-sm py-2 border-b">
-        <span className="text-muted-foreground flex items-center gap-1.5">
+        <span className="text-muted-foreground flex items-center gap-1.5 min-w-[120px]">
           {icon} {label}
         </span>
         <span className="font-medium text-right break-words max-w-[60%]">{String(displayVal)}</span>
@@ -130,11 +156,17 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
         <SheetHeader className="mb-6">
           <div className="flex items-center justify-between mt-4">
             {isEditing ? (
-              <Input
-                value={editData.asset_name || ''}
-                onChange={(e) => setEditData({ ...editData, asset_name: e.target.value })}
-                className="font-bold text-lg w-2/3"
-              />
+              <div className="w-2/3 space-y-1">
+                <Input
+                  value={editData.asset_name || ''}
+                  onChange={(e) => setEditData({ ...editData, asset_name: e.target.value })}
+                  className="font-bold text-lg h-9"
+                  placeholder="Nome do Ativo"
+                />
+                {errors.asset_name && (
+                  <span className="text-[10px] text-destructive">{errors.asset_name}</span>
+                )}
+              </div>
             ) : (
               <SheetTitle className="text-xl">{localAsset.asset_name}</SheetTitle>
             )}
@@ -174,11 +206,29 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
               )}
             </div>
           </div>
-          <SheetDescription className="flex items-center gap-1.5 mt-1">
-            <MapPin className="h-3.5 w-3.5" />
-            {localAsset.city || 'Cidade N/D'} {localAsset.uf_code ? `(${localAsset.uf_code})` : ''}{' '}
-            | ID: {localAsset.fcu_code}
-          </SheetDescription>
+          <div className="mt-1">
+            {isEditing ? (
+              <div className="flex flex-col gap-2 w-full mt-2">
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs text-muted-foreground">ID FCU</Label>
+                  <Input
+                    value={editData.fcu_code || ''}
+                    onChange={(e) => setEditData({ ...editData, fcu_code: e.target.value })}
+                    className="h-8 text-sm max-w-[200px]"
+                  />
+                  {errors.fcu_code && (
+                    <span className="text-[10px] text-destructive">{errors.fcu_code}</span>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <SheetDescription className="flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5" />
+                {localAsset.city || 'Cidade N/D'}{' '}
+                {localAsset.uf_code ? `(${localAsset.uf_code})` : ''} | ID: {localAsset.fcu_code}
+              </SheetDescription>
+            )}
+          </div>
         </SheetHeader>
 
         <Tabs defaultValue="general" className="w-full">
@@ -195,7 +245,12 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
                 <Activity className="h-4 w-4 text-primary" /> Telemetria & Operação
               </h4>
               <ul className="space-y-1 mb-4">
-                {renderRow('Status do Ativo', 'asset_state', 'text')}
+                {renderRow('Status do Ativo', 'asset_state', 'select', undefined, [
+                  { value: 'Operacional', label: 'Operacional' },
+                  { value: 'Em Implantação', label: 'Em Implantação' },
+                  { value: 'Em Manutenção', label: 'Em Manutenção' },
+                  { value: 'Desativado', label: 'Desativado' },
+                ])}
                 {renderRow(
                   'Receita Mensal (R$)',
                   'contract_value',
@@ -252,7 +307,7 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
                 <Network className="h-3.5 w-3.5" />,
               )}
               {renderRow('Qtd. Baterias', 'battery_count', 'number')}
-              {renderRow('Nº de Retificadores', 'rectifier_count', 'number')}
+              {renderRow('Número de Retificadores', 'rectifier_count', 'number')}
               {renderRow('Espec. Retificadores', 'sr_specification')}
               {renderRow('Ar Condicionado', 'air_conditioned')}
               {renderRow('Blindado', 'armored')}
