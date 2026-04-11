@@ -57,32 +57,57 @@ migrate(
     addNumber('longitude')
     addText('rectifier_spec')
 
-    // Important: Save the collection BEFORE running raw SQL that depends on new columns
     if (changed) {
       app.save(col)
     }
 
-    // Deduplicate records to avoid UNIQUE constraint violation when adding the index
-    try {
-      app
-        .db()
-        .newQuery(`
-      DELETE FROM assets WHERE id NOT IN (
-        SELECT MIN(id) FROM assets GROUP BY fcu_code
-      ) AND fcu_code IS NOT NULL AND fcu_code != ''
-    `)
-        .execute()
-    } catch (e) {
-      console.log('Deduplication error (ignoring):', e)
-    }
-
-    col.addIndex('idx_assets_fcu_code_unique', true, 'fcu_code', '')
+    // Use a partial index (fcu_code != '') to safely ignore empty strings on existing records
+    // and completely avoid raw SQL queries that might taint the migration transaction.
+    col.addIndex('idx_assets_fcu_code_unique', true, 'fcu_code', "fcu_code != ''")
     app.save(col)
   },
   (app) => {
     try {
       const col = app.findCollectionByNameOrId('assets')
       col.removeIndex('idx_assets_fcu_code_unique')
+
+      const fieldsToRemove = [
+        'fcu_code',
+        'asset_name',
+        'asset_state',
+        'uf_code',
+        'city',
+        'cabinet_type',
+        'rack_serial_number',
+        'address',
+        'battery_qty',
+        'rectifier_number',
+        'network_type',
+        'is_active',
+        'is_in_stock',
+        'utility',
+        'pendency',
+        'step_number',
+        'process_status',
+        'air_conditioning',
+        'bluetooth',
+        'armored',
+        'iams_regional',
+        'rack_key',
+        'holder',
+        'monthly_revenue',
+        'installation_date',
+        'latitude',
+        'longitude',
+        'rectifier_spec',
+      ]
+
+      for (const field of fieldsToRemove) {
+        if (col.fields.getByName(field)) {
+          col.fields.removeByName(field)
+        }
+      }
+
       app.save(col)
     } catch (e) {
       console.log(e)
