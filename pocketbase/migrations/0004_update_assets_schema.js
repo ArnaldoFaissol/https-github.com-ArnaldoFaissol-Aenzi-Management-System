@@ -61,12 +61,14 @@ migrate(
     if (!col.fields.getByName('uptime')) col.fields.add(new NumberField({ name: 'uptime' }))
     if (!col.fields.getByName('mttr_hours')) col.fields.add(new NumberField({ name: 'mttr_hours' }))
 
+    app.save(col)
+
     app
       .db()
       .newQuery(`
     DELETE FROM assets WHERE id NOT IN (
       SELECT MIN(id) FROM assets GROUP BY fcu_code
-    ) AND fcu_code IS NOT NULL AND fcu_code != ''
+    )
   `)
       .execute()
 
