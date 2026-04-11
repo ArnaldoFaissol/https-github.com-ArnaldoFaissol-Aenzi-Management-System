@@ -36,23 +36,14 @@ migrate(
       needsInitialSave = true
     }
 
-    // MUST save the collection first so the new columns actually exist in SQLite
-    // before we run any raw queries on them!
+    // Save the collection to persist the new fields
     if (needsInitialSave) {
       app.save(assetsCol)
     }
 
-    // 2. Safely deduplicate records by fcu_code
-    app
-      .db()
-      .newQuery(`
-    DELETE FROM assets WHERE id NOT IN (
-      SELECT MIN(id) FROM assets GROUP BY fcu_code
-    ) AND fcu_code IS NOT NULL AND fcu_code != ''
-  `)
-      .execute()
-
-    // 3. Add the unique index, ignoring empty strings
+    // 2. Add the unique index, ignoring empty strings
+    // We don't need raw SQL deduplication here because any newly added fields
+    // will be empty, and the index condition `fcu_code != ''` will skip them.
     assetsCol.addIndex('idx_assets_fcu_code', true, 'fcu_code', "fcu_code != ''")
 
     app.save(assetsCol)
