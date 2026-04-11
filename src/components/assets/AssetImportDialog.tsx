@@ -231,11 +231,21 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
       setProgress(100)
       setResultMessage(`${assets.length} registros processados com sucesso.`)
       setStep('success')
+      toast({
+        title: 'Importação Concluída',
+        description: `${assets.length} registros processados com sucesso.`,
+      })
       if (onSuccess) onSuccess()
     } catch (err: any) {
       console.error('Erro na importação:', err)
-      setErrorMessage(err.message || getErrorMessage(err))
+      const msg = err.message || getErrorMessage(err)
+      setErrorMessage(msg)
       setStep('error')
+      toast({
+        variant: 'destructive',
+        title: 'Erro na Importação',
+        description: msg,
+      })
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
