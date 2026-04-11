@@ -46,40 +46,30 @@ migrate(
       new NumberField({ name: 'mttr_hours' }),
     ]
 
-    // Step 1: Force remove fields to clean up desynced schema state
-    // This prevents "SQL logic error: no such column" if a previous migration run failed halfway
-    let needsCleanupSave = false
+    // Step 1: Add missing fields safely without dropping them to avoid SQLite schema cache issues.
+    // Dropping and re-adding columns in the same transaction causes "no such column" errors.
     for (const field of newFields) {
       const existing = col.fields.getByName(field.name)
-      if (existing) {
-        col.fields.removeById(existing.id)
-        needsCleanupSave = true
+      if (!existing) {
+        col.fields.add(field)
+      } else {
+        existing.required = field.required
+        if (field.type === 'select') {
+          existing.values = field.values
+          existing.maxSelect = field.maxSelect
+        }
       }
     }
 
-    const initialIdxCount = col.indexes ? col.indexes.length : 0
-    col.removeIndex('idx_assets_fcu_code')
-    if (col.indexes && col.indexes.length !== initialIdxCount) {
-      needsCleanupSave = true
-    }
-
-    if (needsCleanupSave) {
-      app.save(col)
-    }
-
     // Step 2: Delete existing records directly from SQLite to prevent UNIQUE constraint errors
-    // or missing required data errors when adding the new schema fields
+    // or missing required data errors when adding the new schema fields.
     try {
       app.db().newQuery('DELETE FROM assets').execute()
     } catch (e) {
       console.log('Delete error:', e)
     }
 
-    // Step 3: Add all fields fresh
-    for (const field of newFields) {
-      col.fields.add(field)
-    }
-
+    // Step 3: Add the unique index
     col.addIndex('idx_assets_fcu_code', true, 'fcu_code', '')
 
     // Step 4: Save final synchronized schema
