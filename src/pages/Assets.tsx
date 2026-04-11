@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AssetTable } from '@/components/assets/AssetTable'
 import { AssetImportDialog } from '@/components/assets/AssetImportDialog'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Upload } from 'lucide-react'
 
 export default function Assets() {
@@ -11,9 +12,14 @@ export default function Assets() {
     <div className="flex flex-col gap-6 animate-slide-up">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight mb-1 text-foreground">
-            Ativos & Telemetria
-          </h1>
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+              Ativos & Telemetria
+            </h1>
+            <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">
+              Skip Cloud Sync
+            </Badge>
+          </div>
           <p className="text-muted-foreground">
             Gestão detalhada dos gabinetes operacionais e monitoramento IoT em tempo real.
           </p>

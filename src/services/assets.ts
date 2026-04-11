@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase/client'
+import { supabase as skipCloud } from '@/lib/supabase/client'
 
 export const ACTIVATION_STEPS = [
   { id: '0', title: '0. Identificação do Site', responsible: 'VIVO' },
@@ -16,7 +16,7 @@ export const ACTIVATION_STEPS = [
 ]
 
 export const getAssets = async () => {
-  const { data, error } = await supabase
+  const { data, error } = await skipCloud
     .from('assets')
     .select('*')
     .order('created_at', { ascending: false })
@@ -25,7 +25,7 @@ export const getAssets = async () => {
 }
 
 export const upsertAssets = async (assets: any[]) => {
-  const { data, error } = await supabase
+  const { data, error } = await skipCloud
     .from('assets')
     .upsert(assets, { onConflict: 'fcu_code' })
     .select()
@@ -34,7 +34,7 @@ export const upsertAssets = async (assets: any[]) => {
 }
 
 export const getRolloutBacklog = async () => {
-  const { data, error } = await supabase
+  const { data, error } = await skipCloud
     .from('rollout_backlog')
     .select('*')
     .order('target_date', { ascending: true })
@@ -47,7 +47,7 @@ export const updateAssetStep = async (
   stepNumber: string,
   processStatus: string,
 ) => {
-  const { data, error } = await supabase
+  const { data, error } = await skipCloud
     .from('assets')
     .update({ step_number: stepNumber, process_status: processStatus })
     .eq('id', assetId)
@@ -55,7 +55,7 @@ export const updateAssetStep = async (
     .single()
   if (error) throw error
 
-  await supabase
+  await skipCloud
     .from('asset_transitions' as any)
     .insert({
       asset_id: assetId,
@@ -67,7 +67,7 @@ export const updateAssetStep = async (
 }
 
 export const getAssetsForKanban = async () => {
-  const { data, error } = await supabase
+  const { data, error } = await skipCloud
     .from('assets')
     .select('id, asset_name, fcu_code, step_number, process_status, city, uf_code')
     .order('created_at', { ascending: false })

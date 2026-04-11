@@ -7,6 +7,7 @@ import { FinancialCards } from '@/components/dashboard/FinancialCards'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Zap, Loader2, FileSpreadsheet, Network } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { getBillingCycles } from '@/services/billing'
 
 export default function Billing() {
@@ -47,9 +48,14 @@ export default function Billing() {
   return (
     <div className="flex flex-col gap-6 animate-slide-up pb-10">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight mb-1 text-foreground">
-          Faturamento & ROI Contábil
-        </h1>
+        <div className="flex items-center gap-3 mb-1">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            Faturamento & ROI Contábil
+          </h1>
+          <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">
+            Skip Cloud Sync
+          </Badge>
+        </div>
         <p className="text-muted-foreground">
           Demonstrações Financeiras (BR GAAP) e análise de performance por ativo.
         </p>

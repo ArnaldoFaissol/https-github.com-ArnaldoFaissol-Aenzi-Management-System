@@ -31,7 +31,8 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
     const lines = text.split(/\r?\n/).filter((line) => line.trim() !== '')
     if (lines.length < 2) throw new Error('O arquivo CSV está vazio ou sem cabeçalhos.')
 
-    const headers = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, ''))
+    const delimiter = lines[0].includes(';') ? ';' : ','
+    const headers = lines[0].split(delimiter).map((h) => h.trim().replace(/^"|"$/g, ''))
 
     const rows = lines.slice(1).map((line) => {
       const values: string[] = []
@@ -42,7 +43,7 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
         const char = line[i]
         if (char === '"') {
           inQuotes = !inQuotes
-        } else if (char === ',' && !inQuotes) {
+        } else if (char === delimiter && !inQuotes) {
           values.push(currentValue.trim())
           currentValue = ''
         } else {
@@ -119,12 +120,17 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
 
       setProgress(70)
 
-      const BATCH_SIZE = 100
+      const BATCH_SIZE = 50 // Reduzido para evitar timeout no Skip Cloud
       let processed = 0
 
       for (let i = 0; i < assets.length; i += BATCH_SIZE) {
         const batch = assets.slice(i, i + BATCH_SIZE)
-        await upsertAssets(batch)
+        try {
+          await upsertAssets(batch)
+        } catch (batchErr) {
+          console.error('Erro no lote:', batchErr)
+          throw new Error('Falha ao inserir lote no Skip Cloud. Verifique os dados do CSV.')
+        }
         processed += batch.length
         setProgress(70 + Math.floor((processed / assets.length) * 25))
       }
@@ -162,10 +168,11 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Importar Base de Ativos</DialogTitle>
+          <DialogTitle>Importar para Skip Cloud</DialogTitle>
           <DialogDescription>
-            Faça o upload do seu CSV atualizado para sincronizar o banco de dados. O sistema usará o
-            código FCU para atualizar registros existentes ou inserir novos.
+            Faça o upload do seu CSV atualizado para sincronizar com o banco de dados Skip Cloud. O
+            sistema usará o código FCU para atualizar registros existentes ou inserir novos, com
+            tolerância a falhas.
           </DialogDescription>
         </DialogHeader>
 
@@ -203,7 +210,7 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
               <p className="text-sm font-medium">Processando e Normalizando Dados...</p>
               <Progress value={progress} className="h-2 w-full" />
               <p className="text-xs text-muted-foreground text-center mt-2">
-                Validando tipos de dados e sincronizando com o banco...
+                Sincronizando via Skip Cloud Data Engine...
               </p>
             </div>
           )}

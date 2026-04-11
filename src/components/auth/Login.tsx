@@ -23,7 +23,7 @@ export default function Login() {
             <Zap className="h-6 w-6 text-primary" />
           </div>
           <CardTitle className="text-2xl font-bold tracking-tight">Plataforma Skip</CardTitle>
-          <CardDescription>AENZI Gestão de Ativos</CardDescription>
+          <CardDescription>AENZI Gestão de Ativos (Skip Cloud)</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">

@@ -9,6 +9,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      asset_transitions: {
+        Row: {
+          asset_id: string
+          changed_by: string | null
+          created_at: string
+          from_step: string | null
+          id: string
+          to_step: string
+        }
+        Insert: {
+          asset_id: string
+          changed_by?: string | null
+          created_at?: string
+          from_step?: string | null
+          id?: string
+          to_step: string
+        }
+        Update: {
+          asset_id?: string
+          changed_by?: string | null
+          created_at?: string
+          from_step?: string | null
+          id?: string
+          to_step?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'asset_transitions_asset_id_fkey'
+            columns: ['asset_id']
+            isOneToOne: false
+            referencedRelation: 'assets'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       assets: {
         Row: {
           address: string | null
@@ -27,7 +62,6 @@ export type Database = {
           holder: string | null
           iams_registration: string | null
           id: string
-          installation_date: string | null
           is_active: boolean | null
           is_in_stock: boolean | null
           latitude: number | null
@@ -63,7 +97,6 @@ export type Database = {
           holder?: string | null
           iams_registration?: string | null
           id?: string
-          installation_date?: string | null
           is_active?: boolean | null
           is_in_stock?: boolean | null
           latitude?: number | null
@@ -99,7 +132,6 @@ export type Database = {
           holder?: string | null
           iams_registration?: string | null
           id?: string
-          installation_date?: string | null
           is_active?: boolean | null
           is_in_stock?: boolean | null
           latitude?: number | null
@@ -379,6 +411,13 @@ export const Constants = {
 // --- COLUMN TYPES (actual PostgreSQL types) ---
 // Use this to know the real database type when writing migrations.
 // "string" in TypeScript types above may be uuid, text, varchar, timestamptz, etc.
+// Table: asset_transitions
+//   id: uuid (not null, default: gen_random_uuid())
+//   asset_id: uuid (not null)
+//   from_step: text (nullable)
+//   to_step: text (not null)
+//   changed_by: uuid (nullable)
+//   created_at: timestamp with time zone (not null, default: now())
 // Table: assets
 //   id: uuid (not null, default: gen_random_uuid())
 //   fcu_code: text (nullable)
@@ -387,7 +426,6 @@ export const Constants = {
 //   utility: text (nullable)
 //   uf_code: text (nullable)
 //   city: text (nullable)
-//   installation_date: date (nullable)
 //   latitude: numeric (nullable)
 //   longitude: numeric (nullable)
 //   battery_level: integer (nullable, default: 100)
@@ -441,6 +479,10 @@ export const Constants = {
 //   is_online: boolean (nullable, default: true)
 
 // --- CONSTRAINTS ---
+// Table: asset_transitions
+//   FOREIGN KEY asset_transitions_asset_id_fkey: FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE
+//   FOREIGN KEY asset_transitions_changed_by_fkey: FOREIGN KEY (changed_by) REFERENCES auth.users(id)
+//   PRIMARY KEY asset_transitions_pkey: PRIMARY KEY (id)
 // Table: assets
 //   UNIQUE assets_fcu_code_key: UNIQUE (fcu_code)
 //   PRIMARY KEY assets_pkey: PRIMARY KEY (id)
@@ -454,6 +496,10 @@ export const Constants = {
 //   PRIMARY KEY telemetry_history_pkey: PRIMARY KEY (id)
 
 // --- ROW LEVEL SECURITY POLICIES ---
+// Table: asset_transitions
+//   Policy "authenticated_all_transitions" (ALL, PERMISSIVE) roles={authenticated}
+//     USING: true
+//     WITH CHECK: true
 // Table: assets
 //   Policy "authenticated_all_assets" (ALL, PERMISSIVE) roles={authenticated}
 //     USING: true
@@ -494,6 +540,5 @@ export const Constants = {
 // Table: assets
 //   CREATE UNIQUE INDEX assets_fcu_code_key ON public.assets USING btree (fcu_code)
 //   CREATE INDEX idx_assets_city ON public.assets USING btree (city)
-//   CREATE INDEX idx_assets_installation_date ON public.assets USING btree (installation_date)
 //   CREATE INDEX idx_assets_status ON public.assets USING btree (asset_state)
 //   CREATE INDEX idx_assets_uf_code ON public.assets USING btree (uf_code)
