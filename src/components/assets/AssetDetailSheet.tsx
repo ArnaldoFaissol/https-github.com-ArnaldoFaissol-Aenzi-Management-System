@@ -21,7 +21,7 @@ import {
 import {
   Activity,
   Battery,
-  Calendar,
+  Calendar as CalendarIcon,
   Clock,
   DollarSign,
   MapPin,
@@ -34,9 +34,18 @@ import {
   Edit3,
   Save,
   X,
+  Bluetooth,
+  KeyRound,
+  User,
+  Map,
 } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
+import { format } from 'date-fns'
+import { cn } from '@/lib/utils'
 import { updateAssetStep, updateAsset, ACTIVATION_STEPS } from '@/services/assets'
 import { useToast } from '@/hooks/use-toast'
 import { extractFieldErrors, getErrorMessage, type FieldErrors } from '@/lib/pocketbase/errors'
@@ -84,7 +93,7 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
   const renderRow = (
     label: string,
     field: string,
-    type: 'text' | 'number' | 'date' | 'select' = 'text',
+    type: 'text' | 'number' | 'date' | 'select' | 'boolean' = 'text',
     icon?: React.ReactNode,
     options?: { value: string; label: string }[],
   ) => {
@@ -92,7 +101,46 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
       return (
         <li className="flex flex-col py-2 border-b gap-1">
           <Label className="text-muted-foreground text-xs">{label}</Label>
-          {type === 'select' && options ? (
+          {type === 'boolean' ? (
+            <div className="flex items-center h-8">
+              <Switch
+                checked={!!editData[field]}
+                onCheckedChange={(val) => setEditData((prev: any) => ({ ...prev, [field]: val }))}
+              />
+            </div>
+          ) : type === 'date' ? (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={'outline'}
+                  className={cn(
+                    'w-full justify-start text-left font-normal h-8 text-sm',
+                    !editData[field] && 'text-muted-foreground',
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {editData[field] ? (
+                    format(new Date(editData[field]), 'PPP')
+                  ) : (
+                    <span>Selecione uma data</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={editData[field] ? new Date(editData[field]) : undefined}
+                  onSelect={(date) =>
+                    setEditData((prev: any) => ({
+                      ...prev,
+                      [field]: date ? date.toISOString() : null,
+                    }))
+                  }
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          ) : type === 'select' && options ? (
             <Select
               value={editData[field] || ''}
               onValueChange={(val) => setEditData((prev: any) => ({ ...prev, [field]: val }))}
@@ -112,11 +160,7 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
             <Input
               type={type}
               value={
-                editData[field] === null || editData[field] === undefined
-                  ? ''
-                  : type === 'date' && editData[field]
-                    ? editData[field].split('T')[0]
-                    : editData[field]
+                editData[field] === null || editData[field] === undefined ? '' : editData[field]
               }
               onChange={(e) => {
                 const val = e.target.value
@@ -134,7 +178,9 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
     }
 
     let displayVal = localAsset[field]
-    if (type === 'date' && displayVal) {
+    if (type === 'boolean') {
+      displayVal = displayVal ? 'Sim' : 'Não'
+    } else if (type === 'date' && displayVal) {
       displayVal = new Date(displayVal).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
     } else if (displayVal === null || displayVal === undefined || displayVal === '') {
       displayVal = 'N/D'
@@ -253,7 +299,7 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
                 ])}
                 {renderRow(
                   'Receita Mensal (R$)',
-                  'contract_value',
+                  'monthly_revenue',
                   'number',
                   <DollarSign className="h-3.5 w-3.5" />,
                 )}
@@ -278,7 +324,7 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
             <Separator />
             <div className="space-y-2">
               <h4 className="text-sm font-semibold flex items-center gap-2 text-foreground">
-                <Calendar className="h-4 w-4 text-primary" /> Histórico Técnico
+                <CalendarIcon className="h-4 w-4 text-primary" /> Histórico Técnico
               </h4>
               <ul className="space-y-1">
                 {renderRow('Data de Instalação', 'installation_date', 'date')}
@@ -306,10 +352,16 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
                 'text',
                 <Network className="h-3.5 w-3.5" />,
               )}
-              {renderRow('Qtd. Baterias', 'battery_count', 'number')}
-              {renderRow('Número de Retificadores', 'rectifier_count', 'number')}
-              {renderRow('Espec. Retificadores', 'sr_specification')}
-              {renderRow('Ar Condicionado', 'air_conditioned')}
+              {renderRow('Qtd. Baterias', 'battery_qty', 'number')}
+              {renderRow('Número de Retificadores', 'rectifier_number', 'number')}
+              {renderRow('Espec. Retificadores', 'rectifier_spec')}
+              {renderRow('Ar Condicionado', 'air_conditioning', 'boolean')}
+              {renderRow(
+                'Bluetooth',
+                'bluetooth',
+                'boolean',
+                <Bluetooth className="h-3.5 w-3.5" />,
+              )}
               {renderRow('Blindado', 'armored')}
             </ul>
           </TabsContent>
@@ -369,16 +421,29 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
           </TabsContent>
 
           <TabsContent value="location" className="mt-4 space-y-4">
-            <h4 className="text-sm font-semibold flex items-center gap-2 text-foreground">
-              <MapPin className="h-4 w-4 text-primary" /> Endereço e Coordenadas
-            </h4>
-            <ul className="space-y-1">
-              {renderRow('Endereço', 'address')}
-              {renderRow('Cidade', 'city')}
-              {renderRow('UF', 'uf_code')}
-              {renderRow('Latitude', 'latitude', 'number')}
-              {renderRow('Longitude', 'longitude', 'number')}
-            </ul>
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold flex items-center gap-2 text-foreground">
+                <MapPin className="h-4 w-4 text-primary" /> Endereço e Coordenadas
+              </h4>
+              <ul className="space-y-1">
+                {renderRow('Endereço', 'address')}
+                {renderRow('Cidade', 'city')}
+                {renderRow('UF', 'uf_code')}
+                {renderRow('Latitude', 'latitude', 'number')}
+                {renderRow('Longitude', 'longitude', 'number')}
+              </ul>
+            </div>
+            <Separator />
+            <div className="space-y-4 pt-2">
+              <h4 className="text-sm font-semibold flex items-center gap-2 text-foreground">
+                <Map className="h-4 w-4 text-primary" /> Dados Regionais e Chaves
+              </h4>
+              <ul className="space-y-1">
+                {renderRow('IAMS Regional', 'iams_regional')}
+                {renderRow('Rack Key', 'rack_key', 'text', <KeyRound className="h-3.5 w-3.5" />)}
+                {renderRow('Holder', 'holder', 'text', <User className="h-3.5 w-3.5" />)}
+              </ul>
+            </div>
           </TabsContent>
         </Tabs>
       </SheetContent>

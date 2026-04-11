@@ -110,11 +110,17 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
       const fcu = getVal(row, ['fcu', 'código', 'codigo'])
       if (!fcu) continue
 
-      const rawContractValue = getVal(row, ['receita', 'contract_value', 'valor', 'receita/mês'])
-      const contract_value = parseNumber(rawContractValue)
-      if (rawContractValue && rawContractValue.trim() !== '' && contract_value === null) {
+      const rawMonthlyRevenue = getVal(row, [
+        'receita',
+        'monthly_revenue',
+        'receita/mês',
+        'receita/mes',
+        'contract_value',
+      ])
+      const monthly_revenue = parseNumber(rawMonthlyRevenue)
+      if (rawMonthlyRevenue && rawMonthlyRevenue.trim() !== '' && monthly_revenue === null) {
         throw new Error(
-          `Linha ${i + 2} (FCU: ${fcu}): Valor inválido para Receita/Mês ("${rawContractValue}"). Deve ser numérico.`,
+          `Linha ${i + 2} (FCU: ${fcu}): Valor inválido para Receita/Mês ("${rawMonthlyRevenue}"). Deve ser numérico.`,
         )
       }
 
@@ -134,6 +140,20 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
         }
       }
 
+      const rawAirCond = getVal(row, ['ar condicionado', 'air_conditioning', 'ac'])
+      const air_conditioning = rawAirCond
+        ? rawAirCond.toLowerCase() === 'sim' ||
+          rawAirCond.toLowerCase() === 'true' ||
+          rawAirCond.toLowerCase() === '1'
+        : false
+
+      const rawBluetooth = getVal(row, ['bluetooth'])
+      const bluetooth = rawBluetooth
+        ? rawBluetooth.toLowerCase() === 'sim' ||
+          rawBluetooth.toLowerCase() === 'true' ||
+          rawBluetooth.toLowerCase() === '1'
+        : false
+
       assets.push({
         fcu_code: fcu,
         asset_name: getVal(row, ['nome', 'ativo', 'site', 'name']) || `Ativo ${fcu}`,
@@ -143,8 +163,8 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
         cabinet_type: getVal(row, ['gabinete', 'cabinet', 'tipogabinete']),
         rack_serial_number: getVal(row, ['serial', 'série', 'serie']),
         address: getVal(row, ['endereço', 'endereco', 'address', 'local']),
-        battery_count: parseNumber(getVal(row, ['bateria', 'battery', 'qtd. baterias'])),
-        rectifier_count: parseNumber(
+        battery_qty: parseNumber(getVal(row, ['bateria', 'battery', 'qtd. baterias'])),
+        rectifier_number: parseNumber(
           getVal(row, [
             'retificador',
             'rectifier',
@@ -159,20 +179,19 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
         pendency: parseNumber(getVal(row, ['pendência', 'pendencia', 'pendency'])) || 0,
         step_number: getVal(row, ['etapa', 'step']),
         process_status: getVal(row, ['status do processo', 'processo', 'process_status']),
-        air_conditioned: getVal(row, ['ar condicionado', 'ar_conditioned', 'ac']),
+        air_conditioning,
+        bluetooth,
         armored: getVal(row, ['blindado', 'blindagem', 'armored']),
-        contract_value,
+        iams_regional: getVal(row, ['iams regional', 'regional', 'iams_regional']),
+        rack_key: getVal(row, ['rack key', 'chave', 'rack_key']),
+        holder: getVal(row, ['holder', 'detentor']),
+        monthly_revenue,
         installation_date: parseDate(
           getVal(row, ['data de instalação', 'instalação', 'installation_date', 'data']),
         ),
         latitude,
         longitude,
-        sr_specification: getVal(row, [
-          'espec',
-          'sr_spec',
-          'especificação',
-          'espec. retificadores',
-        ]),
+        rectifier_spec: getVal(row, ['espec', 'especificação', 'espec. retificadores']),
       })
     }
     return assets
