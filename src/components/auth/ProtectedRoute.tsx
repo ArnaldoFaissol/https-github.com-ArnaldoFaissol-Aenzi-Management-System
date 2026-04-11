@@ -1,6 +1,5 @@
 import { useAuth } from '@/hooks/use-auth'
-import Login from './Login'
-import { Outlet } from 'react-router-dom'
+import { Navigate, Outlet } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 
 export function ProtectedRoute() {
@@ -15,7 +14,7 @@ export function ProtectedRoute() {
   }
 
   if (!user) {
-    return <Login />
+    return <Navigate to="/login" replace />
   }
 
   return <Outlet />

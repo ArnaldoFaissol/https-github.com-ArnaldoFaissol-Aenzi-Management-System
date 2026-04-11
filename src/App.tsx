@@ -5,6 +5,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider } from '@/hooks/use-auth'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import Login from '@/components/auth/Login'
+import Register from '@/components/auth/Register'
 
 import Layout from './components/Layout'
 import Index from './pages/Index'
@@ -29,6 +30,7 @@ const App = () => (
             </Route>
           </Route>
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </TooltipProvider>
