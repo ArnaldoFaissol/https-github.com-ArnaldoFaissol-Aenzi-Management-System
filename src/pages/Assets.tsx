@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getAssets } from '@/services/assets'
 import { useRealtime } from '@/hooks/use-realtime'
+import { usePermissions } from '@/hooks/use-permissions'
 import { AssetDetailSheet } from '@/components/assets/AssetDetailSheet'
 import { AssetImportDialog } from '@/components/assets/AssetImportDialog'
 import { Button } from '@/components/ui/button'
@@ -23,8 +24,13 @@ export default function Assets() {
   const [selectedAsset, setSelectedAsset] = useState<any>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isImportOpen, setIsImportOpen] = useState(false)
+  const { isAdmin } = usePermissions()
 
   const loadAssets = async () => {
+    if (!isAdmin) {
+      setLoading(false)
+      return
+    }
     try {
       const data = await getAssets()
       setAssets(data)
@@ -37,11 +43,15 @@ export default function Assets() {
 
   useEffect(() => {
     loadAssets()
-  }, [])
+  }, [isAdmin])
 
-  useRealtime('assets', () => {
-    loadAssets()
-  })
+  useRealtime(
+    'assets',
+    () => {
+      loadAssets()
+    },
+    isAdmin,
+  )
 
   const filteredAssets = assets.filter(
     (a) =>
@@ -49,6 +59,19 @@ export default function Assets() {
       a.asset_name?.toLowerCase().includes(search.toLowerCase()) ||
       a.city?.toLowerCase().includes(search.toLowerCase()),
   )
+
+  if (!isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4 p-6 animate-fade-in-up">
+        <Server className="h-16 w-16 text-muted-foreground/50" />
+        <h2 className="text-2xl font-bold">Acesso Negado</h2>
+        <p className="text-muted-foreground text-center max-w-md">
+          Você não tem permissão para visualizar ou gerenciar os ativos técnicos. Entre em contato
+          com um administrador do sistema.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-6 p-6 w-full max-w-7xl mx-auto animate-fade-in-up">
