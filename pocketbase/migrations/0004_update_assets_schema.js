@@ -63,14 +63,20 @@ migrate(
 
     app.save(col)
 
-    app
-      .db()
-      .newQuery(`
-    DELETE FROM assets WHERE id NOT IN (
-      SELECT MIN(id) FROM assets GROUP BY fcu_code
-    )
-  `)
-      .execute()
+    try {
+      const records = app.findRecordsByFilter('assets', '1=1', 'created', 10000, 0)
+      const seen = {}
+      for (const record of records) {
+        const fcu = record.get('fcu_code') || 'EMPTY'
+        if (seen[fcu]) {
+          app.delete(record)
+        } else {
+          seen[fcu] = true
+        }
+      }
+    } catch (err) {
+      console.log('Deduplication error:', err)
+    }
 
     col.addIndex('idx_assets_fcu_code', true, 'fcu_code', '')
 
