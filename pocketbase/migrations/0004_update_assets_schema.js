@@ -2,122 +2,90 @@ migrate(
   (app) => {
     const col = app.findCollectionByNameOrId('assets')
 
-    col.listRule = "@request.auth.id != ''"
-    col.viewRule = "@request.auth.id != ''"
-    col.createRule = "@request.auth.id != ''"
-    col.updateRule = "@request.auth.id != ''"
-    col.deleteRule = "@request.auth.id != ''"
-
-    const newFields = [
-      new TextField({ name: 'fcu_code', required: true }),
-      new NumberField({ name: 'monthly_revenue' }),
-      new DateField({ name: 'installation_date' }),
-      new NumberField({ name: 'battery_qty' }),
-      new BoolField({ name: 'air_conditioning' }),
-      new NumberField({ name: 'rectifier_number' }),
-      new TextField({ name: 'rectifier_spec' }),
-      new NumberField({ name: 'latitude' }),
-      new NumberField({ name: 'longitude' }),
-      new BoolField({ name: 'bluetooth' }),
-      new TextField({ name: 'iams_regional' }),
-      new TextField({ name: 'rack_key' }),
-      new TextField({ name: 'holder' }),
-      new TextField({ name: 'asset_name' }),
-      new SelectField({
-        name: 'asset_state',
-        values: ['Operacional', 'Em Implantação', 'Em Manutenção', 'Desativado'],
-        maxSelect: 1,
-      }),
-      new TextField({ name: 'uf_code' }),
-      new TextField({ name: 'city' }),
-      new TextField({ name: 'cabinet_type' }),
-      new TextField({ name: 'rack_serial_number' }),
-      new TextField({ name: 'address' }),
-      new TextField({ name: 'network_type' }),
-      new BoolField({ name: 'is_active' }),
-      new BoolField({ name: 'is_in_stock' }),
-      new TextField({ name: 'utility' }),
-      new NumberField({ name: 'pendency' }),
-      new TextField({ name: 'step_number' }),
-      new TextField({ name: 'process_status' }),
-      new TextField({ name: 'armored' }),
-      new NumberField({ name: 'battery_level' }),
-      new NumberField({ name: 'uptime' }),
-      new NumberField({ name: 'mttr_hours' }),
-    ]
-
-    // Step 1: Add missing fields safely without dropping them to avoid SQLite schema cache issues.
-    // Dropping and re-adding columns in the same transaction causes "no such column" errors.
-    for (const field of newFields) {
-      const existing = col.fields.getByName(field.name)
-      if (!existing) {
-        col.fields.add(field)
-      } else {
-        existing.required = field.required
-        if (field.type === 'select') {
-          existing.values = field.values
-          existing.maxSelect = field.maxSelect
-        }
+    let changed = false
+    const addText = (name) => {
+      if (!col.fields.getByName(name)) {
+        col.fields.add(new TextField({ name }))
+        changed = true
+      }
+    }
+    const addNumber = (name) => {
+      if (!col.fields.getByName(name)) {
+        col.fields.add(new NumberField({ name }))
+        changed = true
+      }
+    }
+    const addBool = (name) => {
+      if (!col.fields.getByName(name)) {
+        col.fields.add(new BoolField({ name }))
+        changed = true
+      }
+    }
+    const addDate = (name) => {
+      if (!col.fields.getByName(name)) {
+        col.fields.add(new DateField({ name }))
+        changed = true
       }
     }
 
-    // Step 2: Delete existing records directly from SQLite to prevent UNIQUE constraint errors
-    // or missing required data errors when adding the new schema fields.
-    try {
-      app.db().newQuery('DELETE FROM assets').execute()
-    } catch (e) {
-      console.log('Delete error:', e)
+    addText('fcu_code')
+    addText('asset_name')
+    addText('asset_state')
+    addText('uf_code')
+    addText('city')
+    addText('cabinet_type')
+    addText('rack_serial_number')
+    addText('address')
+    addNumber('battery_qty')
+    addNumber('rectifier_number')
+    addText('network_type')
+    addBool('is_active')
+    addBool('is_in_stock')
+    addText('utility')
+    addNumber('pendency')
+    addText('step_number')
+    addText('process_status')
+    addBool('air_conditioning')
+    addBool('bluetooth')
+    addText('armored')
+    addText('iams_regional')
+    addText('rack_key')
+    addText('holder')
+    addNumber('monthly_revenue')
+    addDate('installation_date')
+    addNumber('latitude')
+    addNumber('longitude')
+    addText('rectifier_spec')
+
+    // Important: Save the collection BEFORE running raw SQL that depends on new columns
+    if (changed) {
+      app.save(col)
     }
 
-    // Step 3: Add the unique index
-    col.addIndex('idx_assets_fcu_code', true, 'fcu_code', '')
+    // Deduplicate records to avoid UNIQUE constraint violation when adding the index
+    try {
+      app
+        .db()
+        .newQuery(`
+      DELETE FROM assets WHERE id NOT IN (
+        SELECT MIN(id) FROM assets GROUP BY fcu_code
+      ) AND fcu_code IS NOT NULL AND fcu_code != ''
+    `)
+        .execute()
+    } catch (e) {
+      console.log('Deduplication error (ignoring):', e)
+    }
 
-    // Step 4: Save final synchronized schema
+    col.addIndex('idx_assets_fcu_code_unique', true, 'fcu_code', '')
     app.save(col)
   },
   (app) => {
-    const col = app.findCollectionByNameOrId('assets')
-    col.removeIndex('idx_assets_fcu_code')
-
-    const fieldNames = [
-      'fcu_code',
-      'monthly_revenue',
-      'installation_date',
-      'battery_qty',
-      'air_conditioning',
-      'rectifier_number',
-      'rectifier_spec',
-      'latitude',
-      'longitude',
-      'bluetooth',
-      'iams_regional',
-      'rack_key',
-      'holder',
-      'asset_name',
-      'asset_state',
-      'uf_code',
-      'city',
-      'cabinet_type',
-      'rack_serial_number',
-      'address',
-      'network_type',
-      'is_active',
-      'is_in_stock',
-      'utility',
-      'pendency',
-      'step_number',
-      'process_status',
-      'armored',
-      'battery_level',
-      'uptime',
-      'mttr_hours',
-    ]
-
-    for (const name of fieldNames) {
-      const f = col.fields.getByName(name)
-      if (f) col.fields.removeById(f.id)
+    try {
+      const col = app.findCollectionByNameOrId('assets')
+      col.removeIndex('idx_assets_fcu_code_unique')
+      app.save(col)
+    } catch (e) {
+      console.log(e)
     }
-
-    app.save(col)
   },
 )
