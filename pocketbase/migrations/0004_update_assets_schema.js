@@ -8,83 +8,126 @@ migrate(
     col.updateRule = "@request.auth.id != ''"
     col.deleteRule = "@request.auth.id != ''"
 
-    if (!col.fields.getByName('fcu_code'))
-      col.fields.add(new TextField({ name: 'fcu_code', required: true }))
-    if (!col.fields.getByName('monthly_revenue'))
-      col.fields.add(new NumberField({ name: 'monthly_revenue' }))
-    if (!col.fields.getByName('installation_date'))
-      col.fields.add(new DateField({ name: 'installation_date' }))
-    if (!col.fields.getByName('battery_qty'))
-      col.fields.add(new NumberField({ name: 'battery_qty' }))
-    if (!col.fields.getByName('air_conditioning'))
-      col.fields.add(new BoolField({ name: 'air_conditioning' }))
-    if (!col.fields.getByName('rectifier_number'))
-      col.fields.add(new NumberField({ name: 'rectifier_number' }))
-    if (!col.fields.getByName('rectifier_spec'))
-      col.fields.add(new TextField({ name: 'rectifier_spec' }))
-    if (!col.fields.getByName('latitude')) col.fields.add(new NumberField({ name: 'latitude' }))
-    if (!col.fields.getByName('longitude')) col.fields.add(new NumberField({ name: 'longitude' }))
-    if (!col.fields.getByName('bluetooth')) col.fields.add(new BoolField({ name: 'bluetooth' }))
-    if (!col.fields.getByName('iams_regional'))
-      col.fields.add(new TextField({ name: 'iams_regional' }))
-    if (!col.fields.getByName('rack_key')) col.fields.add(new TextField({ name: 'rack_key' }))
-    if (!col.fields.getByName('holder')) col.fields.add(new TextField({ name: 'holder' }))
+    const newFields = [
+      new TextField({ name: 'fcu_code', required: true }),
+      new NumberField({ name: 'monthly_revenue' }),
+      new DateField({ name: 'installation_date' }),
+      new NumberField({ name: 'battery_qty' }),
+      new BoolField({ name: 'air_conditioning' }),
+      new NumberField({ name: 'rectifier_number' }),
+      new TextField({ name: 'rectifier_spec' }),
+      new NumberField({ name: 'latitude' }),
+      new NumberField({ name: 'longitude' }),
+      new BoolField({ name: 'bluetooth' }),
+      new TextField({ name: 'iams_regional' }),
+      new TextField({ name: 'rack_key' }),
+      new TextField({ name: 'holder' }),
+      new TextField({ name: 'asset_name' }),
+      new SelectField({
+        name: 'asset_state',
+        values: ['Operacional', 'Em Implantação', 'Em Manutenção', 'Desativado'],
+        maxSelect: 1,
+      }),
+      new TextField({ name: 'uf_code' }),
+      new TextField({ name: 'city' }),
+      new TextField({ name: 'cabinet_type' }),
+      new TextField({ name: 'rack_serial_number' }),
+      new TextField({ name: 'address' }),
+      new TextField({ name: 'network_type' }),
+      new BoolField({ name: 'is_active' }),
+      new BoolField({ name: 'is_in_stock' }),
+      new TextField({ name: 'utility' }),
+      new NumberField({ name: 'pendency' }),
+      new TextField({ name: 'step_number' }),
+      new TextField({ name: 'process_status' }),
+      new TextField({ name: 'armored' }),
+      new NumberField({ name: 'battery_level' }),
+      new NumberField({ name: 'uptime' }),
+      new NumberField({ name: 'mttr_hours' }),
+    ]
 
-    if (!col.fields.getByName('asset_name')) col.fields.add(new TextField({ name: 'asset_name' }))
-    if (!col.fields.getByName('asset_state'))
-      col.fields.add(
-        new SelectField({
-          name: 'asset_state',
-          values: ['Operacional', 'Em Implantação', 'Em Manutenção', 'Desativado'],
-          maxSelect: 1,
-        }),
-      )
-    if (!col.fields.getByName('uf_code')) col.fields.add(new TextField({ name: 'uf_code' }))
-    if (!col.fields.getByName('city')) col.fields.add(new TextField({ name: 'city' }))
-    if (!col.fields.getByName('cabinet_type'))
-      col.fields.add(new TextField({ name: 'cabinet_type' }))
-    if (!col.fields.getByName('rack_serial_number'))
-      col.fields.add(new TextField({ name: 'rack_serial_number' }))
-    if (!col.fields.getByName('address')) col.fields.add(new TextField({ name: 'address' }))
-    if (!col.fields.getByName('network_type'))
-      col.fields.add(new TextField({ name: 'network_type' }))
-    if (!col.fields.getByName('is_active')) col.fields.add(new BoolField({ name: 'is_active' }))
-    if (!col.fields.getByName('is_in_stock')) col.fields.add(new BoolField({ name: 'is_in_stock' }))
-    if (!col.fields.getByName('utility')) col.fields.add(new TextField({ name: 'utility' }))
-    if (!col.fields.getByName('pendency')) col.fields.add(new NumberField({ name: 'pendency' }))
-    if (!col.fields.getByName('step_number')) col.fields.add(new TextField({ name: 'step_number' }))
-    if (!col.fields.getByName('process_status'))
-      col.fields.add(new TextField({ name: 'process_status' }))
-    if (!col.fields.getByName('armored')) col.fields.add(new TextField({ name: 'armored' }))
-    if (!col.fields.getByName('battery_level'))
-      col.fields.add(new NumberField({ name: 'battery_level' }))
-    if (!col.fields.getByName('uptime')) col.fields.add(new NumberField({ name: 'uptime' }))
-    if (!col.fields.getByName('mttr_hours')) col.fields.add(new NumberField({ name: 'mttr_hours' }))
-
-    app.save(col)
-
-    try {
-      const records = app.findRecordsByFilter('assets', '1=1', 'created', 10000, 0)
-      const seen = {}
-      for (const record of records) {
-        const fcu = record.get('fcu_code') || 'EMPTY'
-        if (seen[fcu]) {
-          app.delete(record)
-        } else {
-          seen[fcu] = true
-        }
+    // Step 1: Force remove fields to clean up desynced schema state
+    // This prevents "SQL logic error: no such column" if a previous migration run failed halfway
+    let needsCleanupSave = false
+    for (const field of newFields) {
+      const existing = col.fields.getByName(field.name)
+      if (existing) {
+        col.fields.removeById(existing.id)
+        needsCleanupSave = true
       }
-    } catch (err) {
-      console.log('Deduplication error:', err)
+    }
+
+    const initialIdxCount = col.indexes ? col.indexes.length : 0
+    col.removeIndex('idx_assets_fcu_code')
+    if (col.indexes && col.indexes.length !== initialIdxCount) {
+      needsCleanupSave = true
+    }
+
+    if (needsCleanupSave) {
+      app.save(col)
+    }
+
+    // Step 2: Delete existing records directly from SQLite to prevent UNIQUE constraint errors
+    // or missing required data errors when adding the new schema fields
+    try {
+      app.db().newQuery('DELETE FROM assets').execute()
+    } catch (e) {
+      console.log('Delete error:', e)
+    }
+
+    // Step 3: Add all fields fresh
+    for (const field of newFields) {
+      col.fields.add(field)
     }
 
     col.addIndex('idx_assets_fcu_code', true, 'fcu_code', '')
 
+    // Step 4: Save final synchronized schema
     app.save(col)
   },
   (app) => {
     const col = app.findCollectionByNameOrId('assets')
     col.removeIndex('idx_assets_fcu_code')
+
+    const fieldNames = [
+      'fcu_code',
+      'monthly_revenue',
+      'installation_date',
+      'battery_qty',
+      'air_conditioning',
+      'rectifier_number',
+      'rectifier_spec',
+      'latitude',
+      'longitude',
+      'bluetooth',
+      'iams_regional',
+      'rack_key',
+      'holder',
+      'asset_name',
+      'asset_state',
+      'uf_code',
+      'city',
+      'cabinet_type',
+      'rack_serial_number',
+      'address',
+      'network_type',
+      'is_active',
+      'is_in_stock',
+      'utility',
+      'pendency',
+      'step_number',
+      'process_status',
+      'armored',
+      'battery_level',
+      'uptime',
+      'mttr_hours',
+    ]
+
+    for (const name of fieldNames) {
+      const f = col.fields.getByName(name)
+      if (f) col.fields.removeById(f.id)
+    }
+
     app.save(col)
   },
 )
