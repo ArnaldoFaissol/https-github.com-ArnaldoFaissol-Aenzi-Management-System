@@ -1,0 +1,244 @@
+{
+  "generatedAt": "2026-04-11T13:41:30.373Z",
+  "collections": [
+    {
+      "name": "users",
+      "type": "auth",
+      "apiRules": {
+        "list": "id = @request.auth.id",
+        "view": "id = @request.auth.id",
+        "create": "",
+        "update": "id = @request.auth.id",
+        "delete": "id = @request.auth.id"
+      },
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "avatar",
+          "type": "file",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_tokenKey__pb_users_auth_` ON `users` (`tokenKey`)",
+        "CREATE UNIQUE INDEX `idx_email__pb_users_auth_` ON `users` (`email`) WHERE `email` != ''"
+      ]
+    },
+    {
+      "name": "assets",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onUpdate"]
+        },
+        {
+          "name": "fcu_code",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "asset_name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "asset_state",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "uf_code",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "city",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cabinet_type",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "rack_serial_number",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "address",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "battery_count",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "rectifier_count",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "network_type",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "is_active",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "is_in_stock",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "utility",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "pendency",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "step_number",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "process_status",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "air_conditioned",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "armored",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "contract_value",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "installation_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "latitude",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "longitude",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "sr_specification",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "kwh_total",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "battery_level",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "uptime",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "mttr_hours",
+          "type": "number",
+          "required": false,
+          "system": false
+        }
+      ],
+      "indexes": ["CREATE UNIQUE INDEX `idx_assets_fcu_code` ON `assets` (fcu_code)"]
+    }
+  ]
+}

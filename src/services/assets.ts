@@ -1,4 +1,4 @@
-import { supabase as skipCloud } from '@/lib/supabase/client'
+import pb from '@/lib/pocketbase/client'
 
 export const ACTIVATION_STEPS = [
   { id: '0', title: '0. Identificação do Site', responsible: 'VIVO' },
@@ -16,30 +16,41 @@ export const ACTIVATION_STEPS = [
 ]
 
 export const getAssets = async () => {
-  const { data, error } = await skipCloud
-    .from('assets')
-    .select('*')
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  return data
+  return await pb.collection('assets').getFullList({
+    sort: '-created',
+  })
 }
 
 export const upsertAssets = async (assets: any[]) => {
-  const { data, error } = await skipCloud
-    .from('assets')
-    .upsert(assets, { onConflict: 'fcu_code' })
-    .select()
-  if (error) throw error
-  return data
+  const results = []
+  for (const asset of assets) {
+    if (!asset.fcu_code) continue
+
+    try {
+      const existing = await pb
+        .collection('assets')
+        .getFirstListItem(`fcu_code="${asset.fcu_code}"`)
+      const updated = await pb.collection('assets').update(existing.id, asset)
+      results.push(updated)
+    } catch (err: any) {
+      if (err.status === 404) {
+        const created = await pb.collection('assets').create(asset)
+        results.push(created)
+      } else {
+        throw err
+      }
+    }
+  }
+  return results
+}
+
+export const updateAsset = async (id: string, data: any) => {
+  return await pb.collection('assets').update(id, data)
 }
 
 export const getRolloutBacklog = async () => {
-  const { data, error } = await skipCloud
-    .from('rollout_backlog')
-    .select('*')
-    .order('target_date', { ascending: true })
-  if (error) throw error
-  return data
+  // Mock data for rollout backlog to ensure UI doesn't crash since it's not part of current schema
+  return []
 }
 
 export const updateAssetStep = async (
@@ -47,30 +58,15 @@ export const updateAssetStep = async (
   stepNumber: string,
   processStatus: string,
 ) => {
-  const { data, error } = await skipCloud
-    .from('assets')
-    .update({ step_number: stepNumber, process_status: processStatus })
-    .eq('id', assetId)
-    .select()
-    .single()
-  if (error) throw error
-
-  await skipCloud
-    .from('asset_transitions' as any)
-    .insert({
-      asset_id: assetId,
-      to_step: stepNumber,
-    })
-    .catch(() => {})
-
-  return data
+  return await pb.collection('assets').update(assetId, {
+    step_number: stepNumber,
+    process_status: processStatus,
+  })
 }
 
 export const getAssetsForKanban = async () => {
-  const { data, error } = await skipCloud
-    .from('assets')
-    .select('id, asset_name, fcu_code, step_number, process_status, city, uf_code')
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  return data
+  return await pb.collection('assets').getFullList({
+    sort: '-created',
+    fields: 'id,asset_name,fcu_code,step_number,process_status,city,uf_code',
+  })
 }

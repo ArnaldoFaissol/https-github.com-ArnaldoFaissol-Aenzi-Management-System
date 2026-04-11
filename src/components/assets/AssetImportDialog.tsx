@@ -12,6 +12,7 @@ import { FileUp, CheckCircle2, Loader2, AlertCircle } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import { useToast } from '@/hooks/use-toast'
 import { upsertAssets } from '@/services/assets'
+import { getErrorMessage } from '@/lib/pocketbase/errors'
 
 interface Props {
   open: boolean
@@ -34,21 +35,18 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
     const delimiter = lines[0].includes(';') ? ';' : ','
     const headers = lines[0].split(delimiter).map((h) => h.trim().replace(/^"|"$/g, ''))
 
-    const rows = lines.slice(1).map((line) => {
+    return lines.slice(1).map((line) => {
       const values: string[] = []
       let inQuotes = false
       let currentValue = ''
 
       for (let i = 0; i < line.length; i++) {
         const char = line[i]
-        if (char === '"') {
-          inQuotes = !inQuotes
-        } else if (char === delimiter && !inQuotes) {
+        if (char === '"') inQuotes = !inQuotes
+        else if (char === delimiter && !inQuotes) {
           values.push(currentValue.trim())
           currentValue = ''
-        } else {
-          currentValue += char
-        }
+        } else currentValue += char
       }
       values.push(currentValue.trim())
 
@@ -58,8 +56,31 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
       })
       return obj
     })
+  }
 
-    return rows
+  const parseNumber = (val: string | null | undefined) => {
+    if (!val) return null
+    const cleaned = val
+      .toString()
+      .replace(/[R$\s]/g, '')
+      .replace(/\./g, '')
+      .replace(',', '.')
+    const num = parseFloat(cleaned)
+    return isNaN(num) ? null : num
+  }
+
+  const parseDate = (val: string | null | undefined) => {
+    if (!val) return null
+    const parts = val.split(/[/-]/)
+    if (parts.length === 3) {
+      if (parts[0].length === 2 && parts[2].length === 4) {
+        return `${parts[2]}-${parts[1]}-${parts[0]} 12:00:00.000Z`
+      } else if (parts[0].length === 4) {
+        return `${parts[0]}-${parts[1]}-${parts[2]} 12:00:00.000Z`
+      }
+    }
+    const d = new Date(val)
+    return isNaN(d.getTime()) ? null : d.toISOString()
   }
 
   const mapToAsset = (row: Record<string, string>) => {
@@ -82,17 +103,26 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
       cabinet_type: getVal(['gabinete', 'cabinet', 'tipogabinete']),
       rack_serial_number: getVal(['serial', 'série', 'serie']),
       address: getVal(['endereço', 'endereco', 'address', 'local']),
-      battery_count: parseInt(getVal(['bateria', 'battery']) || '0') || null,
-      rectifier_count: parseInt(getVal(['retificador', 'rectifier']) || '0') || null,
+      battery_count: parseNumber(getVal(['bateria', 'battery', 'qtd. baterias'])),
+      rectifier_count: parseNumber(
+        getVal(['retificador', 'rectifier', 'número de retificadores', 'numero de retificadores']),
+      ),
       network_type: getVal(['rede', 'network']),
       is_active: getVal(['ativo', 'active'])?.toLowerCase() !== 'não',
       is_in_stock: getVal(['estoque', 'stock'])?.toLowerCase() === 'sim',
       utility: getVal(['concessionária', 'concessionaria', 'utility']),
-      pendency: parseInt(getVal(['pendência', 'pendencia', 'pendency']) || '0') || 0,
+      pendency: parseNumber(getVal(['pendência', 'pendencia', 'pendency'])) || 0,
       step_number: getVal(['etapa', 'step']),
       process_status: getVal(['status do processo', 'processo', 'process_status']),
-      air_conditioner: getVal(['ar condicionado', 'ar', 'ac']),
+      air_conditioned: getVal(['ar condicionado', 'ar_conditioned', 'ac']),
       armored: getVal(['blindado', 'blindagem', 'armored']),
+      contract_value: parseNumber(getVal(['receita', 'contract_value', 'valor', 'receita/mês'])),
+      installation_date: parseDate(
+        getVal(['data de instalação', 'instalação', 'installation_date', 'data']),
+      ),
+      latitude: parseNumber(getVal(['lat', 'latitude'])),
+      longitude: parseNumber(getVal(['lon', 'longitude'])),
+      sr_specification: getVal(['espec', 'sr_spec', 'especificação', 'espec. retificadores']),
     }
   }
 
@@ -106,10 +136,8 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
     try {
       const text = await file.text()
       setProgress(30)
-
       const rows = parseCSV(text)
       setProgress(50)
-
       const assets = rows.map(mapToAsset).filter(Boolean)
 
       if (assets.length === 0) {
@@ -119,18 +147,12 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
       }
 
       setProgress(70)
-
-      const BATCH_SIZE = 50 // Reduzido para evitar timeout no Skip Cloud
+      const BATCH_SIZE = 50
       let processed = 0
 
       for (let i = 0; i < assets.length; i += BATCH_SIZE) {
         const batch = assets.slice(i, i + BATCH_SIZE)
-        try {
-          await upsertAssets(batch)
-        } catch (batchErr) {
-          console.error('Erro no lote:', batchErr)
-          throw new Error('Falha ao inserir lote no Skip Cloud. Verifique os dados do CSV.')
-        }
+        await upsertAssets(batch)
         processed += batch.length
         setProgress(70 + Math.floor((processed / assets.length) * 25))
       }
@@ -138,11 +160,10 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
       setProgress(100)
       setResultMessage(`${assets.length} registros processados com sucesso.`)
       setStep('success')
-
       if (onSuccess) onSuccess()
     } catch (err: any) {
       console.error('Erro na importação:', err)
-      setErrorMessage(err.message || 'Ocorreu um erro desconhecido durante a importação.')
+      setErrorMessage(getErrorMessage(err))
       setStep('error')
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -170,9 +191,8 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
         <DialogHeader>
           <DialogTitle>Importar para Skip Cloud</DialogTitle>
           <DialogDescription>
-            Faça o upload do seu CSV atualizado para sincronizar com o banco de dados Skip Cloud. O
-            sistema usará o código FCU para atualizar registros existentes ou inserir novos, com
-            tolerância a falhas.
+            Faça o upload do seu CSV atualizado para sincronizar os ativos. O sistema mapeará
+            automaticamente os dados geográficos, financeiros e técnicos.
           </DialogDescription>
         </DialogHeader>
 
@@ -185,7 +205,7 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
               <div>
                 <p className="text-sm font-medium">Selecione seu arquivo CSV</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Certifique-se que o arquivo contém a coluna "Código FCU"
+                  Deve conter a coluna "Código FCU"
                 </p>
               </div>
               <input
@@ -207,11 +227,8 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
           {step === 'processing' && (
             <div className="text-center w-full px-8 space-y-4">
               <Loader2 className="h-8 w-8 text-primary animate-spin mx-auto" />
-              <p className="text-sm font-medium">Processando e Normalizando Dados...</p>
+              <p className="text-sm font-medium">Processando Dados...</p>
               <Progress value={progress} className="h-2 w-full" />
-              <p className="text-xs text-muted-foreground text-center mt-2">
-                Sincronizando via Skip Cloud Data Engine...
-              </p>
             </div>
           )}
 
@@ -255,19 +272,6 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
           <Button variant="ghost" onClick={handleClose}>
             {step === 'success' ? 'Fechar' : 'Cancelar'}
           </Button>
-          {step === 'success' && (
-            <Button
-              onClick={() => {
-                handleClose()
-                toast({
-                  title: 'Dados sincronizados',
-                  description: 'A tabela de ativos foi atualizada.',
-                })
-              }}
-            >
-              Concluir
-            </Button>
-          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
