@@ -1,14 +1,16 @@
 import { useEffect, useRef } from 'react'
-import { supabase } from '@/lib/supabase/client'
+import pb from '@/lib/pocketbase/client'
+import type { RecordSubscription } from 'pocketbase'
 
 /**
- * Hook for real-time subscriptions to a Supabase table.
+ * Hook for real-time subscriptions to a PocketBase collection.
  * ALWAYS use this hook instead of subscribing inline.
- * This automatically manages channel lifecycle and prevents memory leaks.
+ * Uses the per-listener UnsubscribeFunc so multiple components
+ * can safely subscribe to the same collection without conflicts.
  */
 export function useRealtime(
-  tableName: string,
-  callback: (payload: any) => void,
+  collectionName: string,
+  callback: (data: RecordSubscription<any>) => void,
   enabled: boolean = true,
 ) {
   const callbackRef = useRef(callback)
@@ -17,15 +19,26 @@ export function useRealtime(
   useEffect(() => {
     if (!enabled) return
 
-    const channel = supabase
-      .channel(`public:${tableName}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: tableName }, (payload) => {
-        callbackRef.current(payload)
+    let unsubscribeFn: (() => Promise<void>) | undefined
+    let cancelled = false
+
+    pb.collection(collectionName)
+      .subscribe('*', (e) => {
+        callbackRef.current(e)
       })
-      .subscribe()
+      .then((fn) => {
+        if (cancelled) {
+          fn().catch(() => {})
+        } else {
+          unsubscribeFn = fn
+        }
+      })
 
     return () => {
-      supabase.removeChannel(channel)
+      cancelled = true
+      if (unsubscribeFn) {
+        unsubscribeFn().catch(() => {})
+      }
     }
-  }, [tableName, enabled])
+  }, [collectionName, enabled])
 }

@@ -11,6 +11,7 @@ import {
   ACTIVATION_STEPS,
 } from '@/services/assets'
 import { useToast } from '@/hooks/use-toast'
+import { useRealtime } from '@/hooks/use-realtime'
 
 export default function Rollout() {
   const [backlogSites, setBacklogSites] = useState<any[]>([])
@@ -31,6 +32,10 @@ export default function Rollout() {
     loadData()
   }, [])
 
+  useRealtime('assets', () => {
+    getAssetsForKanban().then((assets) => setKanbanAssets(assets || []))
+  })
+
   const handleDragStart = (e: React.DragEvent, assetId: string) => {
     e.dataTransfer.setData('assetId', assetId)
   }
@@ -39,17 +44,19 @@ export default function Rollout() {
     e.preventDefault()
   }
 
-  const handleDrop = async (e: React.DragEvent, stepId: string) => {
+  const handleDrop = async (e: React.DragEvent, stepId: string, processStatus: string) => {
     e.preventDefault()
     const assetId = e.dataTransfer.getData('assetId')
     if (assetId) {
       const asset = kanbanAssets.find((a) => a.id === assetId)
-      if (asset && asset.step_number !== stepId) {
+      if (asset && asset.process_status !== processStatus) {
         setKanbanAssets((prev) =>
-          prev.map((a) => (a.id === assetId ? { ...a, step_number: stepId } : a)),
+          prev.map((a) =>
+            a.id === assetId ? { ...a, step_number: stepId, process_status: processStatus } : a,
+          ),
         )
         try {
-          await updateAssetStep(assetId, stepId, 'Em Andamento')
+          await updateAssetStep(assetId, stepId, processStatus)
           toast({
             title: 'Etapa atualizada com sucesso',
             description: `Ativo movido para a etapa selecionada`,
@@ -88,13 +95,16 @@ export default function Rollout() {
           ) : (
             <div className="flex gap-4 overflow-x-auto pb-4 h-full snap-x">
               {ACTIVATION_STEPS.map((step) => {
-                const stepAssets = kanbanAssets.filter((a) => (a.step_number || '0') === step.id)
+                const stepAssets = kanbanAssets.filter((a) => {
+                  if (a.process_status) return a.process_status === step.title
+                  return (a.step_number || '0') === step.id
+                })
                 return (
                   <div
                     key={step.id}
                     className="min-w-[300px] w-[300px] bg-secondary/30 rounded-xl p-4 flex flex-col snap-start border border-border/50"
                     onDragOver={handleDragOver}
-                    onDrop={(e) => handleDrop(e, step.id)}
+                    onDrop={(e) => handleDrop(e, step.id, step.title)}
                   >
                     <div className="flex justify-between items-start mb-4 shrink-0">
                       <div>
