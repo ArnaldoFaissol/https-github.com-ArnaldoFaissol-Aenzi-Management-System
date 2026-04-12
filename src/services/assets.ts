@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase/client'
+import pb from '@/lib/pocketbase/client'
 
 export const ACTIVATION_STEPS = [
   { id: '0', title: '0. Identificação do Site', responsible: 'VIVO' },
@@ -16,13 +16,9 @@ export const ACTIVATION_STEPS = [
 ]
 
 export const getAssets = async () => {
-  const { data, error } = await supabase
-    .from('assets')
-    .select('*')
-    .order('created_at', { ascending: false })
-
-  if (error) throw error
-  return data || []
+  return await pb.collection('assets').getFullList({
+    sort: '-created',
+  })
 }
 
 export const upsertAssets = async (assets: any[]) => {
@@ -33,31 +29,19 @@ export const upsertAssets = async (assets: any[]) => {
     if (!asset.fcu_code) continue
 
     try {
-      const { data: existing, error: findError } = await supabase
-        .from('assets')
-        .select('id')
-        .eq('fcu_code', asset.fcu_code)
-        .maybeSingle()
-
-      if (findError && findError.code !== 'PGRST116') {
-        throw findError
+      let existing
+      try {
+        existing = await pb.collection('assets').getFirstListItem(`fcu_code="${asset.fcu_code}"`)
+      } catch (e) {
+        // Not found
       }
 
       if (existing) {
-        const { data, error } = await supabase
-          .from('assets')
-          .update(asset)
-          .eq('id', existing.id)
-          .select()
-          .single()
-
-        if (error) throw error
-        results.push(data)
+        const updated = await pb.collection('assets').update(existing.id, asset)
+        results.push(updated)
       } else {
-        const { data, error } = await supabase.from('assets').insert(asset).select().single()
-
-        if (error) throw error
-        results.push(data)
+        const created = await pb.collection('assets').create(asset)
+        results.push(created)
       }
     } catch (err: any) {
       errors.push({ fcu_code: asset.fcu_code, message: err.message || 'Erro desconhecido' })
@@ -67,25 +51,16 @@ export const upsertAssets = async (assets: any[]) => {
 }
 
 export const updateAsset = async (id: string, data: any) => {
-  const { data: updated, error } = await supabase
-    .from('assets')
-    .update(data)
-    .eq('id', id)
-    .select()
-    .single()
+  return await pb.collection('assets').update(id, data)
+}
 
-  if (error) throw error
-  return updated
+export const deleteAsset = async (id: string) => {
+  return await pb.collection('assets').delete(id)
 }
 
 export const getRolloutBacklog = async () => {
-  const { data, error } = await supabase
-    .from('rollout_backlog')
-    .select('*')
-    .order('created_at', { ascending: false })
-
-  if (error) throw error
-  return data || []
+  // Stub for unsupported backend table (prevents rollout page crash)
+  return []
 }
 
 export const updateAssetStep = async (
@@ -100,11 +75,8 @@ export const updateAssetStep = async (
 }
 
 export const getAssetsForKanban = async () => {
-  const { data, error } = await supabase
-    .from('assets')
-    .select('id,asset_name,fcu_code,step_number,process_status,city,uf_code')
-    .order('created_at', { ascending: false })
-
-  if (error) throw error
-  return data || []
+  return await pb.collection('assets').getFullList({
+    fields: 'id,asset_name,fcu_code,step_number,process_status,city,uf_code',
+    sort: '-created',
+  })
 }

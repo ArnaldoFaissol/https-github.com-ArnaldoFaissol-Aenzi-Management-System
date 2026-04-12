@@ -46,7 +46,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
-import { updateAssetStep, updateAsset, ACTIVATION_STEPS } from '@/services/assets'
+import { updateAssetStep, updateAsset, deleteAsset, ACTIVATION_STEPS } from '@/services/assets'
+import { Trash2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { usePermissions } from '@/hooks/use-permissions'
 
@@ -64,8 +65,9 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
   const [isSaving, setIsSaving] = useState(false)
   const [editData, setEditData] = useState<any>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isDeleting, setIsDeleting] = useState(false)
   const { toast } = useToast()
-  const { isAdmin } = usePermissions()
+  const { isAdmin, canDeleteAsset } = usePermissions()
 
   useEffect(() => {
     setLocalAsset(asset)
@@ -73,6 +75,25 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
   }, [asset])
 
   if (!localAsset) return null
+
+  const handleDelete = async () => {
+    if (!confirm('Tem certeza que deseja excluir este ativo?')) return
+    setIsDeleting(true)
+    try {
+      await deleteAsset(localAsset.id)
+      onOpenChange(false)
+      if (onUpdate) onUpdate()
+      toast({ title: 'Ativo excluído com sucesso!' })
+    } catch (e: any) {
+      toast({
+        title: 'Erro ao excluir',
+        description: e.message || 'Erro desconhecido',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsDeleting(false)
+    }
+  }
 
   const handleSave = async () => {
     setIsSaving(true)
@@ -185,7 +206,8 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
     if (type === 'boolean') {
       displayVal = displayVal ? 'Sim' : 'Não'
     } else if (type === 'date' && displayVal) {
-      displayVal = new Date(displayVal).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+      const d = new Date(displayVal)
+      displayVal = isNaN(d.getTime()) ? 'N/D' : d.toLocaleDateString('pt-BR', { timeZone: 'UTC' })
     } else if (displayVal === null || displayVal === undefined || displayVal === '') {
       displayVal = 'N/D'
     }
@@ -222,6 +244,21 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
             )}
 
             <div className="flex items-center gap-2">
+              {canDeleteAsset && !isEditing && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                </Button>
+              )}
               {isAdmin &&
                 (isEditing ? (
                   <>
@@ -302,9 +339,17 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
                   { value: 'Em Manutenção', label: 'Em Manutenção' },
                   { value: 'Desativado', label: 'Desativado' },
                 ])}
+                {renderRow('Ativo em Operação', 'is_active', 'boolean')}
+                {renderRow('Em Estoque', 'is_in_stock', 'boolean')}
                 {renderRow(
                   'Receita Mensal (R$)',
                   'monthly_revenue',
+                  'number',
+                  <DollarSign className="h-3.5 w-3.5" />,
+                )}
+                {renderRow(
+                  'Valor do Contrato (R$)',
+                  'contract_value',
                   'number',
                   <DollarSign className="h-3.5 w-3.5" />,
                 )}
@@ -357,6 +402,7 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
                 'text',
                 <Network className="h-3.5 w-3.5" />,
               )}
+              {renderRow('Utilidade (Utility)', 'utility')}
               {renderRow('Qtd. Baterias', 'battery_qty', 'number')}
               {renderRow('Número de Retificadores', 'rectifier_number', 'number')}
               {renderRow('Espec. Retificadores', 'rectifier_spec')}
@@ -376,6 +422,9 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
               <h4 className="text-sm font-semibold flex items-center gap-2 text-foreground mb-4">
                 <Briefcase className="h-4 w-4 text-primary" /> Workflow de Ativação
               </h4>
+              <div className="mb-4">
+                <ul className="space-y-1">{renderRow('Pendências', 'pendency', 'number')}</ul>
+              </div>
               <div className="relative border-l border-border/60 ml-3 pl-6 space-y-6">
                 {ACTIVATION_STEPS.map((step, index) => {
                   const currentStepId = localAsset.step_number || '0'

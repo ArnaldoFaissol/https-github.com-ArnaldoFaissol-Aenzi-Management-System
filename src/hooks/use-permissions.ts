@@ -4,9 +4,16 @@ export function usePermissions() {
   const { user } = useAuth()
 
   const hasRole = (roles: string[]) => {
-    if (!user) return false
+    if (!user || !user.role) return false
     return roles.includes(user.role)
   }
 
-  return { hasRole }
+  const isSuperuser = hasRole(['superuser'])
+  const isAdmin = hasRole(['superuser', 'admin'])
+  const isUser = hasRole(['superuser', 'admin', 'user'])
+
+  const canEditAsset = isAdmin
+  const canDeleteAsset = isSuperuser
+
+  return { hasRole, isSuperuser, isAdmin, isUser, canEditAsset, canDeleteAsset }
 }
