@@ -27,7 +27,7 @@ export default function Assets() {
   const { isAdmin } = usePermissions()
 
   const loadAssets = async () => {
-    if (!isAdmin) {
+    if (!isUser) {
       setLoading(false)
       return
     }
@@ -43,14 +43,14 @@ export default function Assets() {
 
   useEffect(() => {
     loadAssets()
-  }, [isAdmin])
+  }, [])
 
   useRealtime(
     'assets',
     () => {
       loadAssets()
     },
-    isAdmin,
+    isUser,
   )
 
   const filteredAssets = assets.filter(
@@ -60,14 +60,14 @@ export default function Assets() {
       a.city?.toLowerCase().includes(search.toLowerCase()),
   )
 
-  if (!isAdmin) {
+  if (!isUser) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] gap-4 p-6 animate-fade-in-up">
         <Server className="h-16 w-16 text-muted-foreground/50" />
         <h2 className="text-2xl font-bold">Acesso Negado</h2>
         <p className="text-muted-foreground text-center max-w-md">
-          Você não tem permissão para visualizar ou gerenciar os ativos técnicos. Entre em contato
-          com um administrador do sistema.
+          Você não tem permissão para visualizar os ativos técnicos. Entre em contato com um
+          administrador do sistema.
         </p>
       </div>
     )
@@ -86,10 +86,12 @@ export default function Assets() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setIsImportOpen(true)}>
-            <Upload className="mr-2 h-4 w-4" />
-            Importar CSV
-          </Button>
+          {isAdmin && (
+            <Button variant="outline" onClick={() => setIsImportOpen(true)}>
+              <Upload className="mr-2 h-4 w-4" />
+              Importar CSV
+            </Button>
+          )}
         </div>
       </div>
 

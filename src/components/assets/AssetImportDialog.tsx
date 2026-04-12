@@ -221,21 +221,43 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
       const BATCH_SIZE = 50
       let processed = 0
 
+      const allErrors: string[] = []
+      let totalSuccess = 0
+
       for (let i = 0; i < assets.length; i += BATCH_SIZE) {
         const batch = assets.slice(i, i + BATCH_SIZE)
-        await upsertAssets(batch)
+        const { results, errors } = await upsertAssets(batch)
+        totalSuccess += results.length
+        if (errors.length > 0) {
+          allErrors.push(...errors.map((e) => `FCU ${e.fcu_code}: ${e.message}`))
+        }
         processed += batch.length
         setProgress(70 + Math.floor((processed / assets.length) * 25))
       }
 
       setProgress(100)
-      setResultMessage(`${assets.length} registros processados com sucesso.`)
-      setStep('success')
-      toast({
-        title: 'Importação Concluída',
-        description: `${assets.length} registros processados com sucesso.`,
-      })
-      if (onSuccess) onSuccess()
+
+      if (allErrors.length > 0) {
+        setErrorMessage(
+          `${totalSuccess} importados com sucesso. ${allErrors.length} erros encontrados:\n` +
+            allErrors.slice(0, 5).join('\n') +
+            (allErrors.length > 5 ? '\n...' : ''),
+        )
+        setStep('error')
+        toast({
+          variant: 'destructive',
+          title: 'Importação Parcial',
+          description: `${allErrors.length} registros falharam.`,
+        })
+      } else {
+        setResultMessage(`${totalSuccess} registros processados com sucesso.`)
+        setStep('success')
+        toast({
+          title: 'Importação Concluída',
+          description: `${totalSuccess} registros processados com sucesso.`,
+        })
+        if (onSuccess) onSuccess()
+      }
     } catch (err: any) {
       console.error('Erro na importação:', err)
       const msg = err.message || getErrorMessage(err)
@@ -336,7 +358,9 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
                 <p className="text-sm font-medium text-red-700 dark:text-red-500">
                   Erro na Importação
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">{errorMessage}</p>
+                <div className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap text-left bg-muted p-2 rounded max-h-32 overflow-y-auto">
+                  {errorMessage}
+                </div>
               </div>
               <Button
                 variant="outline"

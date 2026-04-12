@@ -24,7 +24,9 @@ const App = () => (
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
               <Route path="/" element={<Index />} />
-              <Route path="/ativos" element={<Assets />} />
+              <Route element={<ProtectedRoute allowedRoles={['user', 'admin', 'superuser']} />}>
+                <Route path="/ativos" element={<Assets />} />
+              </Route>
               <Route path="/rollout" element={<Rollout />} />
               <Route path="/financeiro" element={<Billing />} />
             </Route>

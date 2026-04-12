@@ -24,6 +24,7 @@ export const getAssets = async () => {
 
 export const upsertAssets = async (assets: any[]) => {
   const results = []
+  const errors = []
   for (const asset of assets) {
     if (!asset.fcu_code) continue
 
@@ -43,10 +44,10 @@ export const upsertAssets = async (assets: any[]) => {
         }
       }
     } catch (err: any) {
-      throw new Error(`FCU ${asset.fcu_code}: ${getErrorMessage(err)}`)
+      errors.push({ fcu_code: asset.fcu_code, message: getErrorMessage(err) })
     }
   }
-  return results
+  return { results, errors }
 }
 
 export const updateAsset = async (id: string, data: any) => {

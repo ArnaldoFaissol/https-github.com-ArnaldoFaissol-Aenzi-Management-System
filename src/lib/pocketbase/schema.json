@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-11T18:52:32.554Z",
+  "generatedAt": "2026-04-12T15:43:45.811Z",
   "collections": [
     {
       "name": "users",
@@ -29,19 +29,21 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate",
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "role",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["superuser", "admin", "user"]
         }
       ],
       "indexes": [
@@ -53,11 +55,11 @@
       "name": "assets",
       "type": "base",
       "apiRules": {
-        "list": null,
-        "view": null,
-        "create": null,
-        "update": null,
-        "delete": null
+        "list": "@request.auth.role = 'superuser' || @request.auth.role = 'admin' || @request.auth.role = 'user'",
+        "view": "@request.auth.role = 'superuser' || @request.auth.role = 'admin' || @request.auth.role = 'user'",
+        "create": "@request.auth.role = 'superuser' || @request.auth.role = 'admin'",
+        "update": "@request.auth.role = 'superuser' || @request.auth.role = 'admin'",
+        "delete": "@request.auth.role = 'superuser'"
       },
       "fields": [
         {
@@ -65,21 +67,199 @@
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onCreate"
-          ]
+          "autodateTriggers": ["onCreate"]
         },
         {
           "name": "updated",
           "type": "autodate",
           "required": false,
           "system": false,
-          "autodateTriggers": [
-            "onUpdate"
-          ]
+          "autodateTriggers": ["onUpdate"]
+        },
+        {
+          "name": "fcu_code",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "asset_name",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "asset_state",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "uf_code",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "city",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cabinet_type",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "rack_serial_number",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "address",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "battery_qty",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "rectifier_number",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "network_type",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "is_active",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "is_in_stock",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "utility",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "pendency",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "step_number",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "process_status",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "air_conditioning",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "bluetooth",
+          "type": "bool",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "armored",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "iams_regional",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "rack_key",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "holder",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "monthly_revenue",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "installation_date",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "latitude",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "longitude",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "rectifier_spec",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "uptime",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "contract_value",
+          "type": "number",
+          "required": false,
+          "system": false
         }
       ],
-      "indexes": []
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_assets_fcu_code` ON `assets` (fcu_code) WHERE fcu_code != ''"
+      ]
     }
   ]
 }
