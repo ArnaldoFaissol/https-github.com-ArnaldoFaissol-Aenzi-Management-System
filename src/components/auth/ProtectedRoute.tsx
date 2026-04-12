@@ -1,11 +1,10 @@
 import { useAuth } from '@/hooks/use-auth'
-import { usePermissions } from '@/hooks/use-permissions'
-import { Navigate, Outlet } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 
 export function ProtectedRoute({ allowedRoles }: { allowedRoles?: string[] }) {
   const { user, loading } = useAuth()
-  const { hasRole } = usePermissions()
+  const location = useLocation()
 
   if (loading) {
     return (
@@ -16,10 +15,10 @@ export function ProtectedRoute({ allowedRoles }: { allowedRoles?: string[] }) {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/login" state={{ from: location }} replace />
   }
 
-  if (allowedRoles && !hasRole(allowedRoles)) {
+  if (allowedRoles && (!user.role || !allowedRoles.includes(user.role))) {
     return <Navigate to="/" replace />
   }
 
