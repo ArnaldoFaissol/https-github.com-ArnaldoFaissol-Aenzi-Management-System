@@ -1,18 +1,21 @@
 import pb from '@/lib/pocketbase/client'
 
 export const ACTIVATION_STEPS = [
-  { id: '0', title: '0. Identificação do Site', responsible: 'VIVO' },
-  { id: '1', title: '1. Vistoria Inicial', responsible: 'AENZI' },
-  { id: '2', title: '2. Aprovação de Projeto', responsible: 'TLP' },
-  { id: '3', title: '3. Preparação do Local', responsible: 'AENZI' },
-  { id: '4', title: '4. Entrega do Gabinete', responsible: 'AENZI' },
-  { id: '5', title: '5. Instalação Física', responsible: 'AENZI' },
-  { id: '6', title: '6. Conexão Elétrica', responsible: 'VIVO' },
-  { id: '7', title: '7. Instalação de Equip.', responsible: 'TLP' },
-  { id: '8', title: '8. Testes Conectividade', responsible: 'VIVO' },
-  { id: '9', title: '9. Comissionamento', responsible: 'AENZI' },
-  { id: '10', title: '10. Aceitação Provisória', responsible: 'TLP' },
-  { id: '11', title: '11. Ativação Final', responsible: 'VIVO' },
+  { id: '1', title: 'ALOCAR', responsible: 'VIVO' },
+  { id: '2', title: 'Vistoria Inicial', responsible: 'AENZI' },
+  { id: '3', title: 'Aprovação de Projeto', responsible: 'TLP' },
+  { id: '4', title: 'Licenciamento', responsible: 'VIVO' },
+  { id: '5', title: 'Preparação do Local', responsible: 'AENZI' },
+  { id: '6', title: 'Entrega do Gabinete', responsible: 'AENZI' },
+  { id: '7', title: 'Instalação Física', responsible: 'AENZI' },
+  { id: '8', title: 'Infraestrutura Elétrica', responsible: 'VIVO' },
+  { id: '9', title: 'Conexão Elétrica', responsible: 'VIVO' },
+  { id: '10', title: 'Instalação de Equipamentos', responsible: 'TLP' },
+  { id: '11', title: 'Configuração Lógica', responsible: 'TLP' },
+  { id: '12', title: 'Testes Conectividade', responsible: 'VIVO' },
+  { id: '13', title: 'Comissionamento', responsible: 'AENZI' },
+  { id: '14', title: 'Aceitação Provisória', responsible: 'TLP' },
+  { id: '15', title: 'Ativação Final', responsible: 'VIVO' },
 ]
 
 export const getAssets = async () => {

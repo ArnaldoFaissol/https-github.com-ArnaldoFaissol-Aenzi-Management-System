@@ -49,7 +49,7 @@ export default function Rollout() {
     const assetId = e.dataTransfer.getData('assetId')
     if (assetId) {
       const asset = kanbanAssets.find((a) => a.id === assetId)
-      if (asset && asset.process_status !== processStatus) {
+      if (asset && (asset.process_status !== processStatus || asset.step_number !== stepId)) {
         setKanbanAssets((prev) =>
           prev.map((a) =>
             a.id === assetId ? { ...a, step_number: stepId, process_status: processStatus } : a,
@@ -96,8 +96,13 @@ export default function Rollout() {
             <div className="flex gap-4 overflow-x-auto pb-4 h-full snap-x">
               {ACTIVATION_STEPS.map((step) => {
                 const stepAssets = kanbanAssets.filter((a) => {
-                  if (a.process_status) return a.process_status === step.title
-                  return (a.step_number || '0') === step.id
+                  const matchingStep = ACTIVATION_STEPS.find(
+                    (s) =>
+                      (a.process_status && s.title === a.process_status) ||
+                      (a.step_number && s.id === a.step_number),
+                  )
+                  const effectiveStepId = matchingStep ? matchingStep.id : '1'
+                  return effectiveStepId === step.id
                 })
                 return (
                   <div
