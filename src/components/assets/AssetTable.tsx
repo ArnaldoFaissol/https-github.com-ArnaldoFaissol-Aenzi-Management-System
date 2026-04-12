@@ -13,25 +13,60 @@ import { AssetDetailSheet } from './AssetDetailSheet'
 import { Input } from '@/components/ui/input'
 import { Search, SlidersHorizontal, Loader2 } from 'lucide-react'
 import { getAssets } from '@/services/assets'
+import { useRealtime } from '@/hooks/use-realtime'
 
 export function AssetTable() {
   const [assets, setAssets] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedAsset, setSelectedAsset] = useState<any | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
+    key: 'asset_name',
+    direction: 'asc',
+  })
 
-  useEffect(() => {
+  const loadData = () => {
     getAssets().then((data) => {
       setAssets(data)
       setLoading(false)
     })
+  }
+
+  useEffect(() => {
+    loadData()
   }, [])
 
-  const filteredAssets = assets.filter(
-    (a) =>
-      a.asset_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      a.fcu_code?.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  useRealtime('assets', () => {
+    loadData()
+  })
+
+  const handleSort = (key: string) => {
+    setSortConfig((current) => ({
+      key,
+      direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+    }))
+  }
+
+  const filteredAssets = assets
+    .filter(
+      (a) =>
+        a.asset_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        a.fcu_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        a.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        a.uf_code?.toLowerCase().includes(searchTerm.toLowerCase()),
+    )
+    .sort((a, b) => {
+      const aVal = a[sortConfig.key]
+      const bVal = b[sortConfig.key]
+
+      if (aVal === bVal) return 0
+      if (aVal === null || aVal === undefined) return 1
+      if (bVal === null || bVal === undefined) return -1
+
+      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1
+      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1
+      return 0
+    })
 
   if (loading) {
     return (
@@ -63,13 +98,56 @@ export function AssetTable() {
         <Table>
           <TableHeader className="bg-muted/50">
             <TableRow>
-              <TableHead className="w-[120px]">ID Gabinete</TableHead>
-              <TableHead>Nome do Site</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Etapa / Processo</TableHead>
-              <TableHead>Localidade</TableHead>
-              <TableHead className="text-right">Receita/Mês</TableHead>
-              <TableHead className="text-right">Uptime</TableHead>
+              <TableHead
+                className="w-[120px] cursor-pointer hover:bg-muted"
+                onClick={() => handleSort('fcu_code')}
+              >
+                ID Gabinete{' '}
+                {sortConfig.key === 'fcu_code' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead
+                className="cursor-pointer hover:bg-muted"
+                onClick={() => handleSort('asset_name')}
+              >
+                Nome do Site{' '}
+                {sortConfig.key === 'asset_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead
+                className="cursor-pointer hover:bg-muted"
+                onClick={() => handleSort('asset_state')}
+              >
+                Status{' '}
+                {sortConfig.key === 'asset_state' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead
+                className="cursor-pointer hover:bg-muted"
+                onClick={() => handleSort('process_status')}
+              >
+                Etapa / Processo{' '}
+                {sortConfig.key === 'process_status' &&
+                  (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead
+                className="cursor-pointer hover:bg-muted"
+                onClick={() => handleSort('city')}
+              >
+                Localidade{' '}
+                {sortConfig.key === 'city' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead
+                className="text-right cursor-pointer hover:bg-muted"
+                onClick={() => handleSort('contract_value')}
+              >
+                Receita/Mês{' '}
+                {sortConfig.key === 'contract_value' &&
+                  (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead
+                className="text-right cursor-pointer hover:bg-muted"
+                onClick={() => handleSort('uptime')}
+              >
+                Uptime {sortConfig.key === 'uptime' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </TableHead>
               <TableHead className="text-right"></TableHead>
             </TableRow>
           </TableHeader>

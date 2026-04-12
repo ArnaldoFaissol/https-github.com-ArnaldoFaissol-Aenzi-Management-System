@@ -21,6 +21,10 @@ export default function Assets() {
   const [assets, setAssets] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
+    key: 'asset_name',
+    direction: 'asc',
+  })
   const [selectedAsset, setSelectedAsset] = useState<any>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isImportOpen, setIsImportOpen] = useState(false)
@@ -53,12 +57,33 @@ export default function Assets() {
     isUser,
   )
 
-  const filteredAssets = assets.filter(
-    (a) =>
-      a.fcu_code?.toLowerCase().includes(search.toLowerCase()) ||
-      a.asset_name?.toLowerCase().includes(search.toLowerCase()) ||
-      a.city?.toLowerCase().includes(search.toLowerCase()),
-  )
+  const filteredAssets = assets
+    .filter(
+      (a) =>
+        a.fcu_code?.toLowerCase().includes(search.toLowerCase()) ||
+        a.asset_name?.toLowerCase().includes(search.toLowerCase()) ||
+        a.city?.toLowerCase().includes(search.toLowerCase()) ||
+        a.uf_code?.toLowerCase().includes(search.toLowerCase()),
+    )
+    .sort((a, b) => {
+      const aVal = a[sortConfig.key]
+      const bVal = b[sortConfig.key]
+
+      if (aVal === bVal) return 0
+      if (aVal === null || aVal === undefined) return 1
+      if (bVal === null || bVal === undefined) return -1
+
+      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1
+      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1
+      return 0
+    })
+
+  const handleSort = (key: string) => {
+    setSortConfig((current) => ({
+      key,
+      direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+    }))
+  }
 
   if (!isUser) {
     return (
@@ -111,10 +136,34 @@ export default function Assets() {
         <Table>
           <TableHeader className="bg-muted/50">
             <TableRow>
-              <TableHead>ID FCU</TableHead>
-              <TableHead>Nome do Ativo</TableHead>
-              <TableHead>Localidade</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead
+                className="cursor-pointer hover:bg-muted"
+                onClick={() => handleSort('fcu_code')}
+              >
+                ID FCU{' '}
+                {sortConfig.key === 'fcu_code' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead
+                className="cursor-pointer hover:bg-muted"
+                onClick={() => handleSort('asset_name')}
+              >
+                Nome do Ativo{' '}
+                {sortConfig.key === 'asset_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead
+                className="cursor-pointer hover:bg-muted"
+                onClick={() => handleSort('city')}
+              >
+                Localidade{' '}
+                {sortConfig.key === 'city' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </TableHead>
+              <TableHead
+                className="cursor-pointer hover:bg-muted"
+                onClick={() => handleSort('asset_state')}
+              >
+                Status{' '}
+                {sortConfig.key === 'asset_state' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>

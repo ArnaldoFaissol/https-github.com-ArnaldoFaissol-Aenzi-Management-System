@@ -136,8 +136,13 @@ export default function Rollout() {
   return (
     <div className="flex flex-col gap-6 animate-slide-up h-[calc(100vh-80px)]">
       <Tabs defaultValue="kanban" className="flex flex-col h-full w-full">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
-          <div className="flex flex-col items-start gap-4">
+        <div className="flex flex-col gap-4 shrink-0">
+          {isAdmin && (
+            <div className="flex justify-start">
+              <ManageColumnsSheet stages={activationSteps} onUpdated={loadData} />
+            </div>
+          )}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h1 className="text-3xl font-bold tracking-tight mb-1 text-foreground">
                 Rollout e Ativação
@@ -146,13 +151,12 @@ export default function Rollout() {
                 Acompanhamento do cronograma logístico e pipeline de ativação.
               </p>
             </div>
-            {isAdmin && <ManageColumnsSheet stages={activationSteps} onUpdated={loadData} />}
-          </div>
-          <div className="flex items-center gap-3 w-full sm:w-auto overflow-x-auto self-end sm:self-auto">
-            <TabsList>
-              <TabsTrigger value="kanban">Kanban de Ativação</TabsTrigger>
-              <TabsTrigger value="overview">Visão Logística</TabsTrigger>
-            </TabsList>
+            <div className="flex items-center gap-3 w-full sm:w-auto overflow-x-auto self-end sm:self-auto">
+              <TabsList>
+                <TabsTrigger value="kanban">Kanban de Ativação</TabsTrigger>
+                <TabsTrigger value="overview">Visão Logística</TabsTrigger>
+              </TabsList>
+            </div>
           </div>
         </div>
 
