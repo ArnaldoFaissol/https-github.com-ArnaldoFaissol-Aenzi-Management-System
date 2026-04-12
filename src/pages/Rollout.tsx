@@ -8,10 +8,12 @@ import {
   getRolloutBacklog,
   getAssetsForKanban,
   updateAssetStep,
-  ACTIVATION_STEPS,
+  getRolloutStages,
 } from '@/services/assets'
 import { useToast } from '@/hooks/use-toast'
 import { useRealtime } from '@/hooks/use-realtime'
+import { useAuth } from '@/hooks/use-auth'
+import ManageColumnsSheet from '@/components/rollout/ManageColumnsSheet'
 
 const KanbanCard = memo(
   ({
@@ -68,16 +70,23 @@ const getBadgeColor = (responsible: string) => {
 export default function Rollout() {
   const [backlogSites, setBacklogSites] = useState<any[]>([])
   const [kanbanAssets, setKanbanAssets] = useState<any[]>([])
+  const [activationSteps, setActivationSteps] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
+  const { user } = useAuth()
+
+  const isAdmin = user?.role === 'admin' || user?.role === 'superuser'
 
   const loadData = useCallback(() => {
     setLoading(true)
-    Promise.all([getRolloutBacklog(), getAssetsForKanban()]).then(([backlog, assets]) => {
-      setBacklogSites(backlog)
-      setKanbanAssets(assets || [])
-      setLoading(false)
-    })
+    Promise.all([getRolloutBacklog(), getAssetsForKanban(), getRolloutStages()]).then(
+      ([backlog, assets, stages]) => {
+        setBacklogSites(backlog)
+        setKanbanAssets(assets || [])
+        setActivationSteps(stages || [])
+        setLoading(false)
+      },
+    )
   }, [])
 
   useEffect(() => {
@@ -88,18 +97,23 @@ export default function Rollout() {
     getAssetsForKanban().then((assets) => setKanbanAssets(assets || []))
   })
 
+  useRealtime('rollout_stages', () => {
+    getRolloutStages().then((stages) => setActivationSteps(stages || []))
+  })
+
   const groupedAssets = useMemo(() => {
     const groups: Record<string, any[]> = {}
-    ACTIVATION_STEPS.forEach((s) => (groups[s.id] = []))
+    activationSteps.forEach((s) => (groups[s.id] = []))
     kanbanAssets.forEach((a) => {
-      let step = ACTIVATION_STEPS.find(
-        (s) => s.title === a.process_status || s.id === a.step_number,
-      )
-      if (!step) step = ACTIVATION_STEPS[0]
-      if (groups[step.id]) groups[step.id].push(a)
+      let step = activationSteps.find((s) => s.id === a.step_number || s.name === a.process_status)
+      if (!step && activationSteps.length > 0) step = activationSteps[0]
+      if (step) {
+        if (!groups[step.id]) groups[step.id] = []
+        groups[step.id].push(a)
+      }
     })
     return groups
-  }, [kanbanAssets])
+  }, [kanbanAssets, activationSteps])
 
   const handleDragStart = useCallback(
     (e: React.DragEvent, id: string) => e.dataTransfer.setData('assetId', id),
@@ -146,10 +160,13 @@ export default function Rollout() {
               Acompanhamento do cronograma logístico e pipeline de ativação.
             </p>
           </div>
-          <TabsList>
-            <TabsTrigger value="kanban">Kanban de Ativação</TabsTrigger>
-            <TabsTrigger value="overview">Visão Logística</TabsTrigger>
-          </TabsList>
+          <div className="flex items-center gap-3 w-full sm:w-auto overflow-x-auto">
+            {isAdmin && <ManageColumnsSheet stages={activationSteps} onUpdated={loadData} />}
+            <TabsList>
+              <TabsTrigger value="kanban">Kanban de Ativação</TabsTrigger>
+              <TabsTrigger value="overview">Visão Logística</TabsTrigger>
+            </TabsList>
+          </div>
         </div>
 
         <TabsContent value="kanban" className="flex-1 mt-6 min-h-0 m-0">
@@ -159,26 +176,26 @@ export default function Rollout() {
             </div>
           ) : (
             <div className="flex gap-4 overflow-x-auto pb-4 h-full snap-x will-change-scroll">
-              {ACTIVATION_STEPS.map((step) => {
+              {activationSteps.map((step) => {
                 const stepAssets = groupedAssets[step.id] || []
                 return (
                   <div
                     key={step.id}
                     className="min-w-[300px] w-[300px] bg-secondary/30 rounded-xl p-4 flex flex-col snap-start border border-border/50"
                     onDragOver={handleDragOver}
-                    onDrop={(e) => handleDrop(e, step.id, step.title)}
+                    onDrop={(e) => handleDrop(e, step.id, step.name)}
                   >
                     <div className="flex justify-between items-start mb-4 shrink-0">
                       <div>
-                        <h3 className="font-semibold text-sm line-clamp-1" title={step.title}>
-                          {step.title}
+                        <h3 className="font-semibold text-sm line-clamp-1" title={step.name}>
+                          {step.name}
                         </h3>
                         <div className="flex items-center gap-2 mt-1.5">
                           <Badge
                             variant="outline"
-                            className={`text-[10px] font-semibold ${getBadgeColor(step.responsible)}`}
+                            className={`text-[10px] font-semibold ${getBadgeColor(step.responsibility)}`}
                           >
-                            {step.responsible}
+                            {step.responsibility}
                           </Badge>
                           <span className="text-xs text-muted-foreground">
                             {stepAssets.length} ativos
@@ -199,6 +216,16 @@ export default function Rollout() {
                   </div>
                 )
               })}
+              {activationSteps.length === 0 && (
+                <div className="w-[300px] h-full flex flex-col items-center justify-center text-muted-foreground gap-2 border-2 border-dashed rounded-xl border-border/50 p-6 text-center">
+                  <p className="font-medium text-sm">Nenhuma etapa configurada</p>
+                  {isAdmin && (
+                    <p className="text-xs">
+                      Use o botão "Gerenciar Colunas" acima para adicionar novas etapas ao Kanban.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </TabsContent>

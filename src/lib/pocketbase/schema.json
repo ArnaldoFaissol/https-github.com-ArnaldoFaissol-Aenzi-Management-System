@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-12T22:36:57.256Z",
+  "generatedAt": "2026-04-12T22:47:40.874Z",
   "collections": [
     {
       "name": "users",
@@ -260,6 +260,52 @@
       "indexes": [
         "CREATE UNIQUE INDEX `idx_assets_fcu_code` ON `assets` (fcu_code) WHERE fcu_code != ''"
       ]
+    },
+    {
+      "name": "rollout_stages",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.role = 'superuser' || @request.auth.role = 'admin'",
+        "update": "@request.auth.role = 'superuser' || @request.auth.role = 'admin'",
+        "delete": "@request.auth.role = 'superuser' || @request.auth.role = 'admin'"
+      },
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "order",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "responsibility",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
     }
   ]
 }
