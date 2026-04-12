@@ -1,8 +1,16 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import pb from '@/lib/pocketbase/client'
+import { supabase } from '@/lib/supabase/client'
+
+export interface UserProfile {
+  id: string
+  email: string
+  name: string
+  avatar: string | null
+  role: 'superuser' | 'admin' | 'user'
+}
 
 interface AuthContextType {
-  user: any
+  user: UserProfile | null
   session: any
   signUp: (data: {
     name: string
@@ -24,27 +32,49 @@ export const useAuth = () => {
 }
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<any>(pb.authStore.record)
-  const [session, setSession] = useState<any>(
-    pb.authStore.token ? { access_token: pb.authStore.token } : null,
-  )
+  const [user, setUser] = useState<UserProfile | null>(null)
+  const [session, setSession] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    setUser(pb.authStore.record)
-    setSession(pb.authStore.token ? { access_token: pb.authStore.token } : null)
+    const initAuth = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      setSession(session)
+      if (session?.user) {
+        await fetchProfile(session.user.id)
+      } else {
+        setUser(null)
+      }
+      setLoading(false)
+    }
 
-    const unsubscribe = pb.authStore.onChange((token, record) => {
-      setUser(record)
-      setSession(token ? { access_token: token } : null)
+    initAuth()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setSession(session)
+      if (session?.user) {
+        await fetchProfile(session.user.id)
+      } else {
+        setUser(null)
+      }
     })
 
-    setLoading(false)
-
     return () => {
-      unsubscribe()
+      subscription.unsubscribe()
     }
   }, [])
+
+  const fetchProfile = async (userId: string) => {
+    const { data, error } = await supabase.from('users').select('*').eq('id', userId).single()
+
+    if (data && !error) {
+      setUser(data as UserProfile)
+    }
+  }
 
   const signUp = async (data: {
     name: string
@@ -53,9 +83,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     passwordConfirm: string
   }) => {
     try {
-      await pb.collection('users').create({ ...data, role: 'user' })
-      await pb.collection('users').authWithPassword(data.email, data.password)
-      return { error: null }
+      const { error } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            name: data.name,
+            role: 'user',
+          },
+        },
+      })
+      return { error }
     } catch (error) {
       return { error }
     }
@@ -63,16 +101,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
-      await pb.collection('users').authWithPassword(email, password)
-      return { error: null }
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      return { error }
     } catch (error) {
       return { error }
     }
   }
 
   const signOut = async () => {
-    pb.authStore.clear()
-    return { error: null }
+    const { error } = await supabase.auth.signOut()
+    setUser(null)
+    setSession(null)
+    return { error }
   }
 
   return (

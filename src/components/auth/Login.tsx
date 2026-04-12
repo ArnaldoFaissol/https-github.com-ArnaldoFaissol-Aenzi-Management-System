@@ -6,8 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Zap, Loader2 } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useToast } from '@/hooks/use-toast'
-import { getErrorMessage } from '@/lib/pocketbase/errors'
-
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -26,8 +24,7 @@ export default function Login() {
     if (error) {
       toast({
         title: 'Erro de Autenticação',
-        description:
-          getErrorMessage(error) || 'Credenciais inválidas. Verifique seu e-mail e senha.',
+        description: error.message || 'Credenciais inválidas. Verifique seu e-mail e senha.',
         variant: 'destructive',
       })
     } else {

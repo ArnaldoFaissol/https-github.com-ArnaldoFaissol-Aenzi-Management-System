@@ -1,5 +1,4 @@
-import pb from '@/lib/pocketbase/client'
-import { getErrorMessage } from '@/lib/pocketbase/errors'
+import { supabase } from '@/lib/supabase/client'
 
 export const ACTIVATION_STEPS = [
   { id: '0', title: '0. Identificação do Site', responsible: 'VIVO' },
@@ -17,45 +16,76 @@ export const ACTIVATION_STEPS = [
 ]
 
 export const getAssets = async () => {
-  return await pb.collection('assets').getFullList({
-    sort: '-created',
-  })
+  const { data, error } = await supabase
+    .from('assets')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data || []
 }
 
 export const upsertAssets = async (assets: any[]) => {
   const results = []
   const errors = []
+
   for (const asset of assets) {
     if (!asset.fcu_code) continue
 
     try {
-      try {
-        const existing = await pb
-          .collection('assets')
-          .getFirstListItem(`fcu_code="${asset.fcu_code}"`)
-        const updated = await pb.collection('assets').update(existing.id, asset)
-        results.push(updated)
-      } catch (err: any) {
-        if (err.status === 404) {
-          const created = await pb.collection('assets').create(asset)
-          results.push(created)
-        } else {
-          throw err
-        }
+      const { data: existing, error: findError } = await supabase
+        .from('assets')
+        .select('id')
+        .eq('fcu_code', asset.fcu_code)
+        .maybeSingle()
+
+      if (findError && findError.code !== 'PGRST116') {
+        throw findError
+      }
+
+      if (existing) {
+        const { data, error } = await supabase
+          .from('assets')
+          .update(asset)
+          .eq('id', existing.id)
+          .select()
+          .single()
+
+        if (error) throw error
+        results.push(data)
+      } else {
+        const { data, error } = await supabase.from('assets').insert(asset).select().single()
+
+        if (error) throw error
+        results.push(data)
       }
     } catch (err: any) {
-      errors.push({ fcu_code: asset.fcu_code, message: getErrorMessage(err) })
+      errors.push({ fcu_code: asset.fcu_code, message: err.message || 'Erro desconhecido' })
     }
   }
   return { results, errors }
 }
 
 export const updateAsset = async (id: string, data: any) => {
-  return await pb.collection('assets').update(id, data)
+  const { data: updated, error } = await supabase
+    .from('assets')
+    .update(data)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return updated
 }
 
 export const getRolloutBacklog = async () => {
-  return []
+  const { data, error } = await supabase
+    .from('rollout_backlog')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data || []
 }
 
 export const updateAssetStep = async (
@@ -63,15 +93,18 @@ export const updateAssetStep = async (
   stepNumber: string,
   processStatus: string,
 ) => {
-  return await pb.collection('assets').update(assetId, {
+  return await updateAsset(assetId, {
     step_number: stepNumber,
     process_status: processStatus,
   })
 }
 
 export const getAssetsForKanban = async () => {
-  return await pb.collection('assets').getFullList({
-    sort: '-created',
-    fields: 'id,asset_name,fcu_code,step_number,process_status,city,uf_code',
-  })
+  const { data, error } = await supabase
+    .from('assets')
+    .select('id,asset_name,fcu_code,step_number,process_status,city,uf_code')
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data || []
 }

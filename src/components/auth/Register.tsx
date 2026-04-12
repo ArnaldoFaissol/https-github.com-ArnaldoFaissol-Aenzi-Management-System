@@ -6,8 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Zap, Loader2 } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useToast } from '@/hooks/use-toast'
-import { getErrorMessage } from '@/lib/pocketbase/errors'
-
 export default function Register() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -38,7 +36,7 @@ export default function Register() {
     if (error) {
       toast({
         title: 'Erro no Cadastro',
-        description: getErrorMessage(error),
+        description: error.message || 'Ocorreu um erro ao criar a conta.',
         variant: 'destructive',
       })
     } else {

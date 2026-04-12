@@ -24,7 +24,7 @@ export default function Assets() {
   const [selectedAsset, setSelectedAsset] = useState<any>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isImportOpen, setIsImportOpen] = useState(false)
-  const { isAdmin } = usePermissions()
+  const { isAdmin, isUser } = usePermissions()
 
   const loadAssets = async () => {
     if (!isUser) {

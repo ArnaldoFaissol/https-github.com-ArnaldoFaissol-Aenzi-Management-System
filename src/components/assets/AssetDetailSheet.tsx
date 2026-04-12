@@ -48,7 +48,7 @@ import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { updateAssetStep, updateAsset, ACTIVATION_STEPS } from '@/services/assets'
 import { useToast } from '@/hooks/use-toast'
-import { extractFieldErrors, getErrorMessage, type FieldErrors } from '@/lib/pocketbase/errors'
+import { usePermissions } from '@/hooks/use-permissions'
 
 interface Props {
   asset: any | null
@@ -63,8 +63,9 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [editData, setEditData] = useState<any>({})
-  const [errors, setErrors] = useState<FieldErrors>({})
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const { toast } = useToast()
+  const { isAdmin } = usePermissions()
 
   useEffect(() => {
     setLocalAsset(asset)
@@ -82,9 +83,12 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
       setIsEditing(false)
       if (onUpdate) onUpdate()
       toast({ title: 'Ativo atualizado com sucesso!' })
-    } catch (e) {
-      setErrors(extractFieldErrors(e))
-      toast({ title: 'Erro ao salvar', description: getErrorMessage(e), variant: 'destructive' })
+    } catch (e: any) {
+      toast({
+        title: 'Erro ao salvar',
+        description: e.message || 'Erro desconhecido',
+        variant: 'destructive',
+      })
     } finally {
       setIsSaving(false)
     }
@@ -218,38 +222,39 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
             )}
 
             <div className="flex items-center gap-2">
-              {isEditing ? (
-                <>
+              {isAdmin &&
+                (isEditing ? (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setIsEditing(false)
+                        setErrors({})
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                    <Button size="sm" onClick={handleSave} disabled={isSaving}>
+                      {isSaving ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </>
+                ) : (
                   <Button
-                    variant="ghost"
-                    size="icon"
+                    variant="outline"
+                    size="sm"
                     onClick={() => {
-                      setIsEditing(false)
-                      setErrors({})
+                      setEditData(localAsset)
+                      setIsEditing(true)
                     }}
                   >
-                    <X className="h-4 w-4" />
+                    <Edit3 className="mr-2 h-3 w-3" /> Editar
                   </Button>
-                  <Button size="sm" onClick={handleSave} disabled={isSaving}>
-                    {isSaving ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Save className="h-4 w-4" />
-                    )}
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setEditData(localAsset)
-                    setIsEditing(true)
-                  }}
-                >
-                  <Edit3 className="mr-2 h-3 w-3" /> Editar
-                </Button>
-              )}
+                ))}
             </div>
           </div>
           <div className="mt-1">

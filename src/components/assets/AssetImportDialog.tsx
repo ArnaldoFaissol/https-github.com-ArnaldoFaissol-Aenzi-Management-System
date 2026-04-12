@@ -12,7 +12,6 @@ import { FileUp, CheckCircle2, Loader2, AlertCircle } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import { useToast } from '@/hooks/use-toast'
 import { upsertAssets } from '@/services/assets'
-import { getErrorMessage } from '@/lib/pocketbase/errors'
 
 interface Props {
   open: boolean
@@ -186,6 +185,7 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
         rack_key: getVal(row, ['rack key', 'chave', 'rack_key']),
         holder: getVal(row, ['holder', 'detentor']),
         monthly_revenue,
+        contract_value: monthly_revenue,
         installation_date: parseDate(
           getVal(row, ['data de instalação', 'instalação', 'installation_date', 'data']),
         ),
@@ -260,7 +260,7 @@ export function AssetImportDialog({ open, onOpenChange, onSuccess }: Props) {
       }
     } catch (err: any) {
       console.error('Erro na importação:', err)
-      const msg = err.message || getErrorMessage(err)
+      const msg = err.message || 'Erro desconhecido'
       setErrorMessage(msg)
       setStep('error')
       toast({
