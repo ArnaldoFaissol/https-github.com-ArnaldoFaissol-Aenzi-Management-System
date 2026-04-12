@@ -38,12 +38,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const initAuth = async () => {
+      setLoading(true)
       const {
         data: { session },
       } = await supabase.auth.getSession()
       setSession(session)
       if (session?.user) {
-        await fetchProfile(session.user.id)
+        await fetchProfile(session.user)
       } else {
         setUser(null)
       }
@@ -57,9 +58,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session)
       if (session?.user) {
-        await fetchProfile(session.user.id)
+        setLoading(true)
+        await fetchProfile(session.user)
+        setLoading(false)
       } else {
         setUser(null)
+        setLoading(false)
       }
     })
 
@@ -68,11 +72,55 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [])
 
-  const fetchProfile = async (userId: string) => {
-    const { data, error } = await supabase.from('users').select('*').eq('id', userId).single()
+  const fetchProfile = async (sessionUser: any) => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', sessionUser.id)
+        .single()
 
-    if (data && !error) {
-      setUser(data as UserProfile)
+      if (data && !error) {
+        setUser(data as UserProfile)
+        return
+      }
+
+      if (error && error.code === 'PGRST116') {
+        const newProfile = {
+          id: sessionUser.id,
+          email: sessionUser.email,
+          name: sessionUser.user_metadata?.name || sessionUser.email?.split('@')[0] || 'User',
+          role: 'user',
+        }
+
+        const { data: createdData, error: createError } = await supabase
+          .from('users')
+          .insert([newProfile])
+          .select()
+          .single()
+
+        if (createdData && !createError) {
+          setUser(createdData as UserProfile)
+          return
+        }
+
+        // Handle race conditions (duplicate key error)
+        if (createError && createError.code === '23505') {
+          const { data: retryData, error: retryError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', sessionUser.id)
+            .single()
+          if (retryData && !retryError) {
+            setUser(retryData as UserProfile)
+            return
+          }
+        }
+      }
+
+      setUser(null)
+    } catch (err) {
+      setUser(null)
     }
   }
 
