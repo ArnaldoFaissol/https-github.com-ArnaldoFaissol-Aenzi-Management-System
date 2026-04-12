@@ -52,21 +52,6 @@ const KanbanCard = memo(
 )
 KanbanCard.displayName = 'KanbanCard'
 
-const getBadgeColor = (responsible: string) => {
-  switch (responsible) {
-    case 'AENZI':
-      return 'bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 border-blue-500/20'
-    case 'VIVO':
-      return 'bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 border-purple-500/20'
-    case 'Operadora':
-      return 'bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 border-orange-500/20'
-    case 'TLP/Parceiro':
-      return 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/20'
-    default:
-      return 'bg-gray-500/10 text-gray-500 hover:bg-gray-500/20 border-gray-500/20'
-  }
-}
-
 export default function Rollout() {
   const [backlogSites, setBacklogSites] = useState<any[]>([])
   const [kanbanAssets, setKanbanAssets] = useState<any[]>([])
@@ -152,16 +137,18 @@ export default function Rollout() {
     <div className="flex flex-col gap-6 animate-slide-up h-[calc(100vh-80px)]">
       <Tabs defaultValue="kanban" className="flex flex-col h-full w-full">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight mb-1 text-foreground">
-              Rollout e Ativação
-            </h1>
-            <p className="text-muted-foreground">
-              Acompanhamento do cronograma logístico e pipeline de ativação.
-            </p>
-          </div>
-          <div className="flex items-center gap-3 w-full sm:w-auto overflow-x-auto">
+          <div className="flex flex-col items-start gap-4">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight mb-1 text-foreground">
+                Rollout e Ativação
+              </h1>
+              <p className="text-muted-foreground">
+                Acompanhamento do cronograma logístico e pipeline de ativação.
+              </p>
+            </div>
             {isAdmin && <ManageColumnsSheet stages={activationSteps} onUpdated={loadData} />}
+          </div>
+          <div className="flex items-center gap-3 w-full sm:w-auto overflow-x-auto self-end sm:self-auto">
             <TabsList>
               <TabsTrigger value="kanban">Kanban de Ativação</TabsTrigger>
               <TabsTrigger value="overview">Visão Logística</TabsTrigger>
@@ -187,17 +174,17 @@ export default function Rollout() {
                   >
                     <div className="flex justify-between items-start mb-4 shrink-0">
                       <div>
-                        <h3 className="font-semibold text-sm line-clamp-1" title={step.name}>
-                          {step.name}
+                        <h3
+                          className="font-semibold text-sm line-clamp-2"
+                          title={`${step.name} (${step.responsibility || 'Sem responsável'})`}
+                        >
+                          {step.name}{' '}
+                          <span className="text-muted-foreground font-normal">
+                            ({step.responsibility || 'N/A'})
+                          </span>
                         </h3>
                         <div className="flex items-center gap-2 mt-1.5">
-                          <Badge
-                            variant="outline"
-                            className={`text-[10px] font-semibold ${getBadgeColor(step.responsibility)}`}
-                          >
-                            {step.responsibility}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs font-medium text-muted-foreground">
                             {stepAssets.length} ativos
                           </span>
                         </div>

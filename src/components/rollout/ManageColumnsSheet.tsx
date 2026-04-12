@@ -117,12 +117,12 @@ export default function ManageColumnsSheet({
       <SheetTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2">
           <Settings className="h-4 w-4" />
-          Gerenciar Colunas
+          Editar/Adicionar Colunas
         </Button>
       </SheetTrigger>
       <SheetContent className="sm:max-w-md flex flex-col h-[100dvh]">
         <SheetHeader>
-          <SheetTitle>Gerenciar Colunas</SheetTitle>
+          <SheetTitle>Editar/Adicionar Colunas</SheetTitle>
           <SheetDescription>
             Adicione, edite ou reordene as etapas do processo de rollout.
           </SheetDescription>
