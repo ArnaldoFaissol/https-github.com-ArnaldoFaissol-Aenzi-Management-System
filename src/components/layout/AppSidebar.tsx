@@ -26,8 +26,8 @@ const menuItems = [
   { title: 'Ativos & Telemetria', path: '/ativos', icon: Server },
   { title: 'Cronograma (Rollout)', path: '/rollout', icon: Truck },
   { title: 'Faturamento & ROI', path: '/financeiro', icon: DollarSign },
-  { title: 'Governança', path: '#', icon: ShieldCheck },
-  { title: 'Configurações', path: '#', icon: Settings },
+  { title: 'Governança', path: '/governanca', icon: ShieldCheck },
+  { title: 'Configurações', path: '/configuracoes', icon: Settings },
 ]
 
 export function AppSidebar() {

@@ -12,6 +12,8 @@ import Index from './pages/Index'
 import Assets from './pages/Assets'
 import Rollout from './pages/Rollout'
 import Billing from './pages/Billing'
+import Governance from './pages/Governance'
+import Settings from './pages/Settings'
 import NotFound from './pages/NotFound'
 
 const App = () => (
@@ -29,6 +31,10 @@ const App = () => (
               </Route>
               <Route path="/rollout" element={<Rollout />} />
               <Route path="/financeiro" element={<Billing />} />
+              <Route path="/governanca" element={<Governance />} />
+              <Route element={<ProtectedRoute allowedRoles={['admin', 'superuser']} />}>
+                <Route path="/configuracoes" element={<Settings />} />
+              </Route>
             </Route>
           </Route>
           <Route path="/login" element={<Login />} />
