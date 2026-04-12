@@ -1,8 +1,8 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import pb from '@/lib/pocketbase/client'
-import type { RecordModel } from 'pocketbase'
+import { supabase } from '@/lib/supabase/client'
+import type { User } from '@supabase/supabase-js'
 
-export interface UserProfile extends RecordModel {
+export interface UserProfile {
   id: string
   email: string
   name: string
@@ -31,6 +31,17 @@ export const useAuth = () => {
   return context
 }
 
+const mapUser = (user: User | null): UserProfile | null => {
+  if (!user) return null
+  return {
+    id: user.id,
+    email: user.email || '',
+    name: user.user_metadata?.name || '',
+    avatar: user.user_metadata?.avatar || '',
+    role: user.user_metadata?.role || 'user',
+  }
+}
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
@@ -39,77 +50,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     let isMounted = true
 
     const initAuth = async () => {
-      setLoading(true)
-
-      if (pb.authStore.isValid && pb.authStore.record) {
-        try {
-          // Verify session by refreshing token
-          const authData = await pb.collection('users').authRefresh()
-
-          if (isMounted) {
-            let currentUser = authData.record as UserProfile
-
-            // Auto-assign default role if missing for profile integrity
-            if (!currentUser.role) {
-              try {
-                const updated = await pb
-                  .collection('users')
-                  .update(currentUser.id, { role: 'user' })
-                currentUser = updated as UserProfile
-              } catch (e) {
-                console.error('Failed to assign default role:', e)
-              }
-            }
-
-            setUser(currentUser)
-          }
-        } catch (err) {
-          // Error handling: if invalid or expired, clear local state completely
-          if (isMounted) {
-            pb.authStore.clear()
-            setUser(null)
-          }
-        }
-      } else {
-        if (isMounted) {
-          pb.authStore.clear()
-          setUser(null)
-        }
-      }
-
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
       if (isMounted) {
+        setUser(mapUser(session?.user ?? null))
         setLoading(false)
       }
     }
 
     initAuth()
 
-    const unsubscribe = pb.authStore.onChange(async (_token, record) => {
-      if (!isMounted) return
-
-      if (record) {
-        let currentUser = record as UserProfile
-
-        if (!currentUser.role) {
-          try {
-            const updated = await pb.collection('users').update(currentUser.id, { role: 'user' })
-            currentUser = updated as UserProfile
-          } catch (e) {
-            console.error('Failed to assign default role:', e)
-          }
-        }
-
-        setUser(currentUser)
-      } else {
-        setUser(null)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (isMounted) {
+        setUser(mapUser(session?.user ?? null))
+        setLoading(false)
       }
-
-      setLoading(false)
     })
 
     return () => {
       isMounted = false
-      unsubscribe()
+      subscription.unsubscribe()
     }
   }, [])
 
@@ -119,41 +82,51 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     password: string
     passwordConfirm: string
   }) => {
+    if (data.password !== data.passwordConfirm) {
+      return { error: new Error('Passwords do not match') }
+    }
+
     try {
       setLoading(true)
-      await pb.collection('users').create({
+      const { error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
-        passwordConfirm: data.passwordConfirm,
-        name: data.name,
-        role: 'user', // Default value on registration
+        options: {
+          data: {
+            name: data.name,
+            role: 'user', // Default value on registration
+          },
+        },
       })
-      await pb.collection('users').authWithPassword(data.email, data.password)
-      return { error: null }
-    } catch (error) {
-      setLoading(false)
       return { error }
+    } catch (error) {
+      return { error }
+    } finally {
+      setLoading(false)
     }
   }
 
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true)
-      await pb.collection('users').authWithPassword(email, password)
-      return { error: null }
-    } catch (error) {
-      setLoading(false)
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
       return { error }
+    } catch (error) {
+      return { error }
+    } finally {
+      setLoading(false)
     }
   }
 
   const signOut = async () => {
     try {
-      pb.authStore.clear()
-      setUser(null)
-      return { error: null }
+      setLoading(true)
+      const { error } = await supabase.auth.signOut()
+      return { error }
     } catch (error) {
       return { error }
+    } finally {
+      setLoading(false)
     }
   }
 
