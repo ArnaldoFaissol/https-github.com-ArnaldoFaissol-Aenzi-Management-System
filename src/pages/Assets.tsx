@@ -164,19 +164,27 @@ export default function Assets() {
                 Status{' '}
                 {sortConfig.key === 'asset_state' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
               </TableHead>
+              <TableHead
+                className="cursor-pointer hover:bg-muted"
+                onClick={() => handleSort('process_status')}
+              >
+                Etapa / Processo{' '}
+                {sortConfig.key === 'process_status' &&
+                  (sortConfig.direction === 'asc' ? '↑' : '↓')}
+              </TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-32 text-center">
+                <TableCell colSpan={6} className="h-32 text-center">
                   <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
                 </TableCell>
               </TableRow>
             ) : filteredAssets.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
+                <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
                   Nenhum ativo encontrado.
                 </TableCell>
               </TableRow>
@@ -207,6 +215,9 @@ export default function Assets() {
                     >
                       {asset.asset_state || 'N/D'}
                     </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {asset.process_status || '-'}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="sm">

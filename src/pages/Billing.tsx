@@ -63,10 +63,14 @@ export default function Billing() {
   )
   const totalPendencies = assets.reduce((acc, curr) => acc + (Number(curr.pendency) || 0), 0)
 
-  // Projected annual ROI calculation based on monthly revenue and contract value
+  // Opex assumed at 30% of revenue for ROI calculation as per executive standards
+  const OPEX_RATE = 0.3
+  const netMonthlyRevenue = totalMonthlyRevenue * (1 - OPEX_RATE)
+
+  // Projected annual ROI calculation based on net monthly revenue and contract value
   const roi =
     totalContractValue > 0
-      ? (((totalMonthlyRevenue * 12) / totalContractValue) * 100).toFixed(2)
+      ? (((netMonthlyRevenue * 12) / totalContractValue) * 100).toFixed(2)
       : '0.00'
 
   // Aggregate financial data by UF for the chart
@@ -140,7 +144,9 @@ export default function Billing() {
                 maximumFractionDigits: 0,
               }).format(totalMonthlyRevenue)}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Geração de caixa mensal estimada</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Geração de caixa bruta mensal estimada
+            </p>
           </CardContent>
         </Card>
       </div>

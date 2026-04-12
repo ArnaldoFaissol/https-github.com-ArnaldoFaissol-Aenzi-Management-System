@@ -10,7 +10,8 @@ export default function Governance() {
           Governança Corporativa e ESG
         </h1>
         <p className="text-muted-foreground">
-          Portal Institucional de Relações com Investidores, Compliance e Sustentabilidade.
+          Portal Institucional de Relações com Investidores, Compliance e Sustentabilidade (Padrão
+          Motiva).
         </p>
       </div>
 
@@ -28,6 +29,12 @@ export default function Governance() {
               transparência focado em acionistas.
             </p>
             <ul className="space-y-3 text-sm mt-4">
+              <li className="flex items-center gap-3 p-2 rounded-md hover:bg-secondary/50 cursor-pointer transition-colors">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium text-secondary-foreground">
+                  Diretrizes de Infraestrutura Motiva
+                </span>
+              </li>
               <li className="flex items-center gap-3 p-2 rounded-md hover:bg-secondary/50 cursor-pointer transition-colors">
                 <FileText className="h-4 w-4 text-muted-foreground" />
                 <span className="font-medium text-secondary-foreground">Estatuto Social v2.1</span>

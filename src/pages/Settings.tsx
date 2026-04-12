@@ -24,6 +24,13 @@ export default function Settings() {
   const [loading, setLoading] = useState(true)
   const [name, setName] = useState(user?.name || '')
 
+  // System Thresholds State
+  const [slaTarget, setSlaTarget] = useState(localStorage.getItem('sys_sla_target') || '45')
+  const [uptimeTarget, setUptimeTarget] = useState(
+    localStorage.getItem('sys_uptime_target') || '99.5',
+  )
+  const [opexRate, setOpexRate] = useState(localStorage.getItem('sys_opex_rate') || '30')
+
   const loadUsers = async () => {
     try {
       const records = await pb.collection('users').getFullList({ sort: '-created' })
@@ -51,6 +58,13 @@ export default function Settings() {
     } catch (e) {
       toast({ title: 'Erro ao atualizar perfil', variant: 'destructive' })
     }
+  }
+
+  const handleUpdateThresholds = () => {
+    localStorage.setItem('sys_sla_target', slaTarget)
+    localStorage.setItem('sys_uptime_target', uptimeTarget)
+    localStorage.setItem('sys_opex_rate', opexRate)
+    toast({ title: 'Parâmetros do sistema atualizados' })
   }
 
   return (
@@ -99,7 +113,48 @@ export default function Settings() {
         </Card>
 
         {(user?.role === 'admin' || user?.role === 'superuser') && (
-          <Card className="shadow-sm border-border/50">
+          <Card className="shadow-sm border-border/50 h-fit lg:col-span-1">
+            <CardHeader>
+              <CardTitle>Parâmetros do Sistema</CardTitle>
+              <CardDescription>
+                Configure os thresholds globais de operação (Motiva).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>SLA Logístico Alvo (Dias)</Label>
+                <Input
+                  type="number"
+                  value={slaTarget}
+                  onChange={(e) => setSlaTarget(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Meta de Uptime Global (%)</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  value={uptimeTarget}
+                  onChange={(e) => setUptimeTarget(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Taxa Presumida de OPEX (%)</Label>
+                <Input
+                  type="number"
+                  value={opexRate}
+                  onChange={(e) => setOpexRate(e.target.value)}
+                />
+              </div>
+              <Button onClick={handleUpdateThresholds} className="w-full sm:w-auto mt-2">
+                Salvar Parâmetros
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {(user?.role === 'admin' || user?.role === 'superuser') && (
+          <Card className="shadow-sm border-border/50 lg:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-primary" />
