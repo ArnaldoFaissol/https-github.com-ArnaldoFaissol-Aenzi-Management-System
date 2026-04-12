@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, memo, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Clock, Route, Truck, Loader2, GripVertical, MapPin } from 'lucide-react'
@@ -13,41 +13,105 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { useRealtime } from '@/hooks/use-realtime'
 
+const KanbanCard = memo(
+  ({
+    asset,
+    onDragStart,
+  }: {
+    asset: any
+    onDragStart: (e: React.DragEvent, id: string) => void
+  }) => (
+    <Card
+      className="p-3 shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing border-border/50 bg-background/80 backdrop-blur-sm"
+      draggable
+      onDragStart={(e) => onDragStart(e, asset.id)}
+    >
+      <div className="flex gap-2 items-start">
+        <GripVertical className="h-4 w-4 text-muted-foreground/40 shrink-0 mt-0.5" />
+        <div className="min-w-0 w-full">
+          <div className="font-medium text-sm truncate" title={asset.asset_name}>
+            {asset.asset_name}
+          </div>
+          <div className="text-xs text-muted-foreground font-mono mt-0.5">
+            {asset.fcu_code || 'S/ID'}
+          </div>
+          {(asset.city || asset.uf_code) && (
+            <div className="text-[10px] text-muted-foreground flex items-center gap-1 mt-2">
+              <MapPin className="h-3 w-3" />
+              <span className="truncate">
+                {asset.city} {asset.uf_code ? `/ ${asset.uf_code}` : ''}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    </Card>
+  ),
+)
+KanbanCard.displayName = 'KanbanCard'
+
+const getBadgeColor = (responsible: string) => {
+  switch (responsible) {
+    case 'AENZI':
+      return 'bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 border-blue-500/20'
+    case 'VIVO':
+      return 'bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 border-purple-500/20'
+    case 'Operadora':
+      return 'bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 border-orange-500/20'
+    case 'TLP/Parceiro':
+      return 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/20'
+    default:
+      return 'bg-gray-500/10 text-gray-500 hover:bg-gray-500/20 border-gray-500/20'
+  }
+}
+
 export default function Rollout() {
   const [backlogSites, setBacklogSites] = useState<any[]>([])
   const [kanbanAssets, setKanbanAssets] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
-  const loadData = () => {
+  const loadData = useCallback(() => {
     setLoading(true)
     Promise.all([getRolloutBacklog(), getAssetsForKanban()]).then(([backlog, assets]) => {
       setBacklogSites(backlog)
       setKanbanAssets(assets || [])
       setLoading(false)
     })
-  }
+  }, [])
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [loadData])
 
   useRealtime('assets', () => {
     getAssetsForKanban().then((assets) => setKanbanAssets(assets || []))
   })
 
-  const handleDragStart = (e: React.DragEvent, assetId: string) => {
-    e.dataTransfer.setData('assetId', assetId)
-  }
+  const groupedAssets = useMemo(() => {
+    const groups: Record<string, any[]> = {}
+    ACTIVATION_STEPS.forEach((s) => (groups[s.id] = []))
+    kanbanAssets.forEach((a) => {
+      let step = ACTIVATION_STEPS.find(
+        (s) => s.title === a.process_status || s.id === a.step_number,
+      )
+      if (!step) step = ACTIVATION_STEPS[0]
+      if (groups[step.id]) groups[step.id].push(a)
+    })
+    return groups
+  }, [kanbanAssets])
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-  }
+  const handleDragStart = useCallback(
+    (e: React.DragEvent, id: string) => e.dataTransfer.setData('assetId', id),
+    [],
+  )
+  const handleDragOver = useCallback((e: React.DragEvent) => e.preventDefault(), [])
 
-  const handleDrop = async (e: React.DragEvent, stepId: string, processStatus: string) => {
-    e.preventDefault()
-    const assetId = e.dataTransfer.getData('assetId')
-    if (assetId) {
+  const handleDrop = useCallback(
+    async (e: React.DragEvent, stepId: string, processStatus: string) => {
+      e.preventDefault()
+      const assetId = e.dataTransfer.getData('assetId')
+      if (!assetId) return
       const asset = kanbanAssets.find((a) => a.id === assetId)
       if (asset && (asset.process_status !== processStatus || asset.step_number !== stepId)) {
         setKanbanAssets((prev) =>
@@ -59,15 +123,16 @@ export default function Rollout() {
           await updateAssetStep(assetId, stepId, processStatus)
           toast({
             title: 'Etapa atualizada com sucesso',
-            description: `Ativo movido para a etapa selecionada`,
+            description: 'Ativo movido para a etapa selecionada',
           })
         } catch (err) {
           toast({ title: 'Erro ao mover ativo', variant: 'destructive' })
           loadData()
         }
       }
-    }
-  }
+    },
+    [kanbanAssets, toast, loadData],
+  )
 
   return (
     <div className="flex flex-col gap-6 animate-slide-up h-[calc(100vh-80px)]">
@@ -93,17 +158,9 @@ export default function Rollout() {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
-            <div className="flex gap-4 overflow-x-auto pb-4 h-full snap-x">
+            <div className="flex gap-4 overflow-x-auto pb-4 h-full snap-x will-change-scroll">
               {ACTIVATION_STEPS.map((step) => {
-                const stepAssets = kanbanAssets.filter((a) => {
-                  const matchingStep = ACTIVATION_STEPS.find(
-                    (s) =>
-                      (a.process_status && s.title === a.process_status) ||
-                      (a.step_number && s.id === a.step_number),
-                  )
-                  const effectiveStepId = matchingStep ? matchingStep.id : '1'
-                  return effectiveStepId === step.id
-                })
+                const stepAssets = groupedAssets[step.id] || []
                 return (
                   <div
                     key={step.id}
@@ -117,7 +174,10 @@ export default function Rollout() {
                           {step.title}
                         </h3>
                         <div className="flex items-center gap-2 mt-1.5">
-                          <Badge variant="outline" className="text-[10px] bg-background/50">
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] font-semibold ${getBadgeColor(step.responsible)}`}
+                          >
                             {step.responsible}
                           </Badge>
                           <span className="text-xs text-muted-foreground">
@@ -126,38 +186,9 @@ export default function Rollout() {
                         </div>
                       </div>
                     </div>
-
                     <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
                       {stepAssets.map((asset) => (
-                        <Card
-                          key={asset.id}
-                          className="p-3 shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing border-border/50 bg-background/80 backdrop-blur-sm"
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, asset.id)}
-                        >
-                          <div className="flex gap-2 items-start">
-                            <GripVertical className="h-4 w-4 text-muted-foreground/40 shrink-0 mt-0.5" />
-                            <div className="min-w-0 w-full">
-                              <div
-                                className="font-medium text-sm truncate"
-                                title={asset.asset_name}
-                              >
-                                {asset.asset_name}
-                              </div>
-                              <div className="text-xs text-muted-foreground font-mono mt-0.5">
-                                {asset.fcu_code || 'S/ID'}
-                              </div>
-                              {(asset.city || asset.uf_code) && (
-                                <div className="text-[10px] text-muted-foreground flex items-center gap-1 mt-2">
-                                  <MapPin className="h-3 w-3" />
-                                  <span className="truncate">
-                                    {asset.city} {asset.uf_code ? `/ ${asset.uf_code}` : ''}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </Card>
+                        <KanbanCard key={asset.id} asset={asset} onDragStart={handleDragStart} />
                       ))}
                       {stepAssets.length === 0 && (
                         <div className="h-24 flex items-center justify-center border-2 border-dashed border-border/50 rounded-lg">
@@ -180,36 +211,40 @@ export default function Rollout() {
                 <CardDescription>Acompanhamento das fases macro de implementação</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm font-medium">
-                    <span>Fase 1: Setup Inicial (Concluído)</span>
-                    <span className="text-primary">100%</span>
+                {[
+                  {
+                    title: 'Fase 1: Setup Inicial (Concluído)',
+                    progress: 100,
+                    desc: 'Estruturação de base de dados e integração IoT.',
+                    color: 'text-primary',
+                  },
+                  {
+                    title: 'Fase 2: Piloto SP/MG (Em andamento)',
+                    progress: 80,
+                    desc: 'Implantação dos primeiros 20 gabinetes.',
+                    color: 'text-primary',
+                  },
+                  {
+                    title: 'Fase 3: Escala Nacional (Pendente)',
+                    progress: 0,
+                    desc: 'Expansão para 4.000 sites até Q4.',
+                    color: 'text-muted-foreground',
+                  },
+                ].map((phase, i) => (
+                  <div key={i} className="space-y-2">
+                    <div
+                      className={`flex justify-between text-sm font-medium ${phase.progress === 0 ? 'text-muted-foreground' : ''}`}
+                    >
+                      <span>{phase.title}</span>
+                      <span className={phase.color}>{phase.progress}%</span>
+                    </div>
+                    <Progress
+                      value={phase.progress}
+                      className={`h-3 ${phase.progress === 0 ? 'bg-muted' : ''}`}
+                    />
+                    <p className="text-xs text-muted-foreground">{phase.desc}</p>
                   </div>
-                  <Progress value={100} className="h-3" />
-                  <p className="text-xs text-muted-foreground">
-                    Estruturação de base de dados e integração IoT.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm font-medium">
-                    <span>Fase 2: Piloto SP/MG (Em andamento)</span>
-                    <span className="text-primary">80%</span>
-                  </div>
-                  <Progress value={80} className="h-3" />
-                  <p className="text-xs text-muted-foreground">
-                    Implantação dos primeiros 20 gabinetes.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm font-medium text-muted-foreground">
-                    <span>Fase 3: Escala Nacional (Pendente)</span>
-                    <span>0%</span>
-                  </div>
-                  <Progress value={0} className="h-3 bg-muted" />
-                  <p className="text-xs text-muted-foreground">Expansão para 4.000 sites até Q4.</p>
-                </div>
+                ))}
               </CardContent>
             </Card>
 
@@ -255,14 +290,10 @@ export default function Rollout() {
                 const daysLeft = site.target_date
                   ? Math.max(
                       0,
-                      Math.floor(
-                        (new Date(site.target_date).getTime() - new Date().getTime()) /
-                          (1000 * 3600 * 24),
-                      ),
+                      Math.floor((new Date(site.target_date).getTime() - Date.now()) / 86400000),
                     )
                   : 45
                 const isDanger = daysLeft < 10
-
                 return (
                   <Card
                     key={site.id}
@@ -283,7 +314,6 @@ export default function Rollout() {
                           {site.region}
                         </Badge>
                       </div>
-
                       <div className="flex items-center gap-2 text-sm mt-4 pt-4 border-t">
                         <Clock
                           className={`h-4 w-4 ${isDanger ? 'text-destructive' : 'text-muted-foreground'}`}
