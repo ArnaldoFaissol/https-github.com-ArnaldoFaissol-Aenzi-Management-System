@@ -38,6 +38,9 @@ import {
   KeyRound,
   User,
   Map,
+  FileText,
+  Download,
+  UploadCloud,
 } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
@@ -47,6 +50,13 @@ import { Calendar } from '@/components/ui/calendar'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { updateAssetStep, updateAsset, deleteAsset, ACTIVATION_STEPS } from '@/services/assets'
+import {
+  getAssetDocuments,
+  uploadAssetDocument,
+  deleteAssetDocument,
+  getDocumentUrl,
+} from '@/services/documents'
+import { useRealtime } from '@/hooks/use-realtime'
 import { Trash2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { usePermissions } from '@/hooks/use-permissions'
@@ -66,6 +76,12 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
   const [editData, setEditData] = useState<any>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isDeleting, setIsDeleting] = useState(false)
+  const [documents, setDocuments] = useState<any[]>([])
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadName, setUploadName] = useState('')
+  const [uploadCategory, setUploadCategory] = useState('Other')
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+
   const { toast } = useToast()
   const { isAdmin, canDeleteAsset } = usePermissions()
 
@@ -73,6 +89,65 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
     setLocalAsset(asset)
     if (asset) setEditData(asset)
   }, [asset])
+
+  const loadDocuments = async () => {
+    if (!asset?.id) return
+    try {
+      const docs = await getAssetDocuments(asset.id)
+      setDocuments(docs)
+    } catch (error) {
+      console.error('Failed to load documents:', error)
+    }
+  }
+
+  useEffect(() => {
+    if (open && asset?.id) {
+      loadDocuments()
+    }
+  }, [asset?.id, open])
+
+  useRealtime(
+    'asset_documents',
+    () => {
+      if (open) loadDocuments()
+    },
+    open,
+  )
+
+  const handleUpload = async () => {
+    if (!uploadFile) {
+      toast({ title: 'Selecione um arquivo', variant: 'destructive' })
+      return
+    }
+    setIsUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('asset_id', localAsset.id)
+      formData.append('file', uploadFile)
+      formData.append('name', uploadName || uploadFile.name)
+      formData.append('category', uploadCategory)
+
+      await uploadAssetDocument(formData)
+      setUploadFile(null)
+      setUploadName('')
+      setUploadCategory('Other')
+      toast({ title: 'Documento enviado com sucesso!' })
+    } catch (e: any) {
+      toast({ title: 'Erro ao enviar documento', description: e.message, variant: 'destructive' })
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const handleDeleteDoc = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este documento?')) return
+    try {
+      await deleteAssetDocument(id)
+      toast({ title: 'Documento excluído com sucesso!' })
+    } catch (e: any) {
+      toast({ title: 'Erro ao excluir documento', description: e.message, variant: 'destructive' })
+    }
+  }
 
   if (!localAsset) return null
 
@@ -320,11 +395,22 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
         </SheetHeader>
 
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="general">Geral</TabsTrigger>
-            <TabsTrigger value="technical">Técnico</TabsTrigger>
-            <TabsTrigger value="process">Processo</TabsTrigger>
-            <TabsTrigger value="location">Local.</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="general" className="text-xs sm:text-sm">
+              Geral
+            </TabsTrigger>
+            <TabsTrigger value="technical" className="text-xs sm:text-sm">
+              Técnico
+            </TabsTrigger>
+            <TabsTrigger value="process" className="text-xs sm:text-sm">
+              Proc.
+            </TabsTrigger>
+            <TabsTrigger value="location" className="text-xs sm:text-sm">
+              Local.
+            </TabsTrigger>
+            <TabsTrigger value="documents" className="text-xs sm:text-sm">
+              Docs
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" className="mt-4 space-y-4">
@@ -496,6 +582,116 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
                 {renderRow('IAMS Regional', 'iams_regional')}
                 {renderRow('Rack Key', 'rack_key', 'text', <KeyRound className="h-3.5 w-3.5" />)}
                 {renderRow('Holder', 'holder', 'text', <User className="h-3.5 w-3.5" />)}
+              </ul>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="documents" className="mt-4 space-y-4">
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold flex items-center gap-2 text-foreground">
+                <FileText className="h-4 w-4 text-primary" /> Documentos do Ativo
+              </h4>
+
+              {isAdmin && (
+                <div className="bg-muted p-3 rounded-lg border space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <Input
+                      placeholder="Nome do Documento (Opcional)"
+                      value={uploadName}
+                      onChange={(e) => setUploadName(e.target.value)}
+                      className="h-8 text-sm bg-background"
+                    />
+                    <Select value={uploadCategory} onValueChange={setUploadCategory}>
+                      <SelectTrigger className="h-8 text-sm bg-background">
+                        <SelectValue placeholder="Categoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Contract">Contrato</SelectItem>
+                        <SelectItem value="Audit Report">Relatório de Auditoria</SelectItem>
+                        <SelectItem value="Other">Outro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    <Input
+                      type="file"
+                      onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                      className="h-8 text-sm flex-1 cursor-pointer bg-background"
+                    />
+                    <Button
+                      size="sm"
+                      className="h-8 shrink-0"
+                      onClick={handleUpload}
+                      disabled={isUploading || !uploadFile}
+                    >
+                      {isUploading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <UploadCloud className="h-4 w-4 mr-2" />
+                      )}
+                      Enviar
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              <ul className="space-y-2 mt-4">
+                {documents.length === 0 ? (
+                  <li className="text-sm text-muted-foreground text-center py-6 border rounded-lg border-dashed">
+                    Nenhum documento encontrado para este ativo.
+                  </li>
+                ) : (
+                  documents.map((doc) => (
+                    <li
+                      key={doc.id}
+                      className="flex items-center justify-between p-3 border rounded-md bg-card hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-start gap-3 overflow-hidden">
+                        <div className="p-2 bg-primary/10 rounded-md shrink-0">
+                          <FileText className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span
+                            className="font-medium text-sm truncate"
+                            title={doc.name || doc.file}
+                          >
+                            {doc.name || doc.file}
+                          </span>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px] font-medium h-4 px-1.5"
+                            >
+                              {doc.category === 'Contract'
+                                ? 'Contrato'
+                                : doc.category === 'Audit Report'
+                                  ? 'Auditoria'
+                                  : 'Outro'}
+                            </Badge>
+                            <span>{format(new Date(doc.created), 'dd/MM/yyyy')}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0 ml-2">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                          <a href={getDocumentUrl(doc)} target="_blank" rel="noopener noreferrer">
+                            <Download className="h-4 w-4" />
+                          </a>
+                        </Button>
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDeleteDoc(doc.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </li>
+                  ))
+                )}
               </ul>
             </div>
           </TabsContent>
