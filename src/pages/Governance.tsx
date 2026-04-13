@@ -1,7 +1,45 @@
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ShieldCheck, Scale, Leaf, FileText, Users, AlertTriangle } from 'lucide-react'
+import {
+  ShieldCheck,
+  Scale,
+  Leaf,
+  FileText,
+  Users,
+  AlertTriangle,
+  TrendingUp,
+  DollarSign,
+} from 'lucide-react'
+import { getAssets } from '@/services/assets'
+import { useRealtime } from '@/hooks/use-realtime'
 
 export default function Governance() {
+  const [metrics, setMetrics] = useState({ contractValue: 0, monthlyRevenue: 0, roi: 0 })
+
+  const loadMetrics = async () => {
+    try {
+      const assets = await getAssets()
+      let totalContract = 0
+      let totalRevenue = 0
+      assets.forEach((a) => {
+        totalContract += Number(a.contract_value) || 0
+        totalRevenue += Number(a.monthly_revenue) || 0
+      })
+      const roi = totalContract > 0 ? ((totalRevenue * 12) / totalContract) * 100 : 0
+      setMetrics({ contractValue: totalContract, monthlyRevenue: totalRevenue, roi })
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  useEffect(() => {
+    loadMetrics()
+  }, [])
+
+  useRealtime('assets', () => {
+    loadMetrics()
+  })
+
   return (
     <div className="flex flex-col gap-6 animate-slide-up p-6 w-full max-w-7xl mx-auto">
       <div>
@@ -13,6 +51,49 @@ export default function Governance() {
           Portal Institucional de Relações com Investidores, Compliance e Sustentabilidade (Padrão
           Motiva).
         </p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3 mb-2">
+        <Card className="shadow-sm border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Valor Total em Contratos</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                metrics.contractValue,
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Baseado nos ativos registrados</p>
+          </CardContent>
+        </Card>
+        <Card className="shadow-sm border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Receita Recorrente Mensal (MRR)</CardTitle>
+            <DollarSign className="h-4 w-4 text-emerald-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                metrics.monthlyRevenue,
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Soma da receita mensal dos ativos</p>
+          </CardContent>
+        </Card>
+        <Card className="shadow-sm border-border/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">ROI Anual Projetado</CardTitle>
+            <TrendingUp className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics.roi.toFixed(1)}%</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Receita Anualizada / Valor do Contrato
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

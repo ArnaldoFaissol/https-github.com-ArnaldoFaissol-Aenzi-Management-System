@@ -49,7 +49,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
-import { updateAssetStep, updateAsset, deleteAsset, ACTIVATION_STEPS } from '@/services/assets'
+import { updateAssetStep, updateAsset, deleteAsset, getRolloutStages } from '@/services/assets'
 import {
   getAssetDocuments,
   uploadAssetDocument,
@@ -81,6 +81,7 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
   const [uploadName, setUploadName] = useState('')
   const [uploadCategory, setUploadCategory] = useState('Other')
   const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [activationSteps, setActivationSteps] = useState<any[]>([])
 
   const { toast } = useToast()
   const { isAdmin, canDeleteAsset } = usePermissions()
@@ -89,6 +90,22 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
     setLocalAsset(asset)
     if (asset) setEditData(asset)
   }, [asset])
+
+  useEffect(() => {
+    if (open) {
+      getRolloutStages().then((stages) => setActivationSteps(stages || []))
+    }
+  }, [open])
+
+  useRealtime(
+    'rollout_stages',
+    () => {
+      if (open) {
+        getRolloutStages().then((stages) => setActivationSteps(stages || []))
+      }
+    },
+    open,
+  )
 
   const loadDocuments = async () => {
     if (!asset?.id) return
@@ -512,11 +529,11 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
                 <ul className="space-y-1">{renderRow('Pendências', 'pendency', 'number')}</ul>
               </div>
               <div className="relative border-l border-border/60 ml-3 pl-6 space-y-6">
-                {ACTIVATION_STEPS.map((step, index) => {
+                {activationSteps.map((step, index) => {
                   const currentStepId = localAsset.step_number || '0'
                   const activeIndex = Math.max(
                     0,
-                    ACTIVATION_STEPS.findIndex((s) => s.id === currentStepId),
+                    activationSteps.findIndex((s) => s.id === currentStepId),
                   )
                   const isCompleted = index < activeIndex
                   const isCurrent = index === activeIndex
@@ -534,19 +551,25 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
                         <h5
                           className={`text-sm font-semibold ${isCurrent ? 'text-primary' : isCompleted ? 'text-foreground' : 'text-muted-foreground'}`}
                         >
-                          {step.title}
+                          {step.name}
                         </h5>
-                        {isCurrent && index < ACTIVATION_STEPS.length - 1 && (
+                        {isCurrent && index < activationSteps.length - 1 && (
                           <Button
                             size="sm"
                             className="mt-3 h-8 text-xs"
-                            onClick={() =>
+                            onClick={() => {
+                              setIsUpdating(true)
                               updateAssetStep(
                                 localAsset.id,
-                                ACTIVATION_STEPS[index + 1].id,
-                                'Em Andamento',
-                              ).then(onUpdate)
-                            }
+                                activationSteps[index + 1].id,
+                                activationSteps[index + 1].name,
+                              )
+                                .then(() => {
+                                  setIsUpdating(false)
+                                  if (onUpdate) onUpdate()
+                                })
+                                .catch(() => setIsUpdating(false))
+                            }}
                             disabled={isUpdating}
                           >
                             Avançar Etapa
@@ -556,6 +579,11 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
                     </div>
                   )
                 })}
+                {activationSteps.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4 border rounded-md border-dashed">
+                    Nenhuma etapa configurada.
+                  </p>
+                )}
               </div>
             </div>
           </TabsContent>
