@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/hooks/use-auth'
-import pb from '@/lib/pocketbase/client'
+import { supabase } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { Loader2, Settings2, Users } from 'lucide-react'
 import {
@@ -33,8 +33,12 @@ export default function Settings() {
 
   const loadUsers = async () => {
     try {
-      const records = await pb.collection('users').getFullList({ sort: '-created' })
-      setUsersList(records)
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      setUsersList(data || [])
     } catch (e) {
       console.error(e)
     } finally {
@@ -53,7 +57,11 @@ export default function Settings() {
   const handleUpdateProfile = async () => {
     if (!user) return
     try {
-      await pb.collection('users').update(user.id, { name })
+      const { error } = await supabase
+        .from('users')
+        .update({ name, updated_at: new Date().toISOString() })
+        .eq('id', user.id)
+      if (error) throw error
       toast({ title: 'Perfil atualizado com sucesso' })
     } catch (e) {
       toast({ title: 'Erro ao atualizar perfil', variant: 'destructive' })
