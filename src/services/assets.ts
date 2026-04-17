@@ -1,34 +1,36 @@
 import { supabase } from '@/lib/supabase/client'
 
+// 28 estagios do processo de ativacao AENZI.
+// Shape usado pelo Kanban em /rollout: { id, name, responsibility, order }
 export const ACTIVATION_STEPS = [
-  { id: '1', title: 'ALOCAR', responsible: 'VIVO' },
-  { id: '2', title: 'Vistoria Inicial', responsible: 'AENZI' },
-  { id: '3', title: 'Viabilidade Técnica', responsible: 'Operadora' },
-  { id: '4', title: 'Aprovação de Projeto', responsible: 'TLP/Parceiro' },
-  { id: '5', title: 'Solicitação de Licenciamento', responsible: 'VIVO' },
-  { id: '6', title: 'Emissão de Licenças', responsible: 'Operadora' },
-  { id: '7', title: 'Preparação do Local', responsible: 'AENZI' },
-  { id: '8', title: 'Fundação e Base', responsible: 'AENZI' },
-  { id: '9', title: 'Entrega do Gabinete', responsible: 'AENZI' },
-  { id: '10', title: 'Instalação Física', responsible: 'AENZI' },
-  { id: '11', title: 'Solicitação de Energia', responsible: 'VIVO' },
-  { id: '12', title: 'Adequação Elétrica Padrão', responsible: 'AENZI' },
-  { id: '13', title: 'Ligação de Energia', responsible: 'Operadora' },
-  { id: '14', title: 'Infraestrutura Interna', responsible: 'TLP/Parceiro' },
-  { id: '15', title: 'Instalação de Retificadores', responsible: 'TLP/Parceiro' },
-  { id: '16', title: 'Instalação de Baterias', responsible: 'TLP/Parceiro' },
-  { id: '17', title: 'Cabeamento de Força', responsible: 'AENZI' },
-  { id: '18', title: 'Cabeamento Óptico/Tx', responsible: 'Operadora' },
-  { id: '19', title: 'Conexão Elétrica Final', responsible: 'VIVO' },
-  { id: '20', title: 'Instalação de Equipamentos Ativos', responsible: 'TLP/Parceiro' },
-  { id: '21', title: 'Configuração Lógica', responsible: 'TLP/Parceiro' },
-  { id: '22', title: 'Testes de Energia', responsible: 'AENZI' },
-  { id: '23', title: 'Testes de Conectividade', responsible: 'VIVO' },
-  { id: '24', title: 'Integração ao Sistema', responsible: 'Operadora' },
-  { id: '25', title: 'Comissionamento', responsible: 'AENZI' },
-  { id: '26', title: 'Vistoria Final de Qualidade', responsible: 'TLP/Parceiro' },
-  { id: '27', title: 'Aceitação Provisória', responsible: 'VIVO' },
-  { id: '28', title: 'Ativação Final', responsible: 'Operadora' },
+  { id: '1', name: 'Alocar', responsibility: 'Operadora' },
+  { id: '2', name: 'Vistoria Inicial', responsibility: 'AENZI' },
+  { id: '3', name: 'Aprovação de Projeto', responsibility: 'Operadora' },
+  { id: '4', name: 'Licenciamento', responsibility: 'Operadora' },
+  { id: '5', name: 'Preparação do Local', responsibility: 'Parceiro Operadora' },
+  { id: '6', name: 'Entrega do Gabinete', responsibility: 'Parceiro Logístico' },
+  { id: '7', name: 'Instalação Física', responsibility: 'TLP/Parceiro Local' },
+  { id: '8', name: 'Infraestrutura Elétrica', responsibility: 'TLP/Parceiro Local' },
+  { id: '9', name: 'Conexão Elétrica', responsibility: 'Torreira' },
+  { id: '10', name: 'Instalação de Equipamentos', responsibility: 'Parceiro Operadora' },
+  { id: '11', name: 'Testes de Conectividade', responsibility: 'Parceiro Operadora' },
+  { id: '12', name: 'Comissionamento', responsibility: 'TLP/Parceiro Local' },
+  { id: '13', name: 'Aceitação Provisória', responsibility: 'Operadora' },
+  { id: '14', name: 'Ativação Final', responsibility: 'Operadora' },
+  { id: '15', name: 'Elaborar FCU', responsibility: 'TLP' },
+  { id: '16', name: 'Validar SCI', responsibility: 'VIVO' },
+  { id: '17', name: 'Validar SCI', responsibility: 'TLP' },
+  { id: '18', name: 'Validar tecnicamente', responsibility: 'VIVO' },
+  { id: '19', name: 'Revisar FCU', responsibility: 'TLP' },
+  { id: '20', name: 'Validar contrato', responsibility: 'Operadora' },
+  { id: '21', name: 'Liberar SCI/FCU', responsibility: 'AENZI' },
+  { id: '22', name: 'Assinar FCU sharing', responsibility: 'AENZI' },
+  { id: '23', name: 'Assinar FCU telefônica', responsibility: 'Operadora' },
+  { id: '24', name: 'Revisar assinatura docs AENZI', responsibility: 'AENZI' },
+  { id: '25', name: 'Revisar assinatura docs Operadora', responsibility: 'Operadora' },
+  { id: '26', name: 'Cadastrar Projeto ERP', responsibility: 'Operadora' },
+  { id: '27', name: 'Aceite ERP', responsibility: 'Operadora' },
+  { id: '28', name: 'Pagamento Recebido', responsibility: 'AENZI' },
 ]
 
 // Campos que nao devem ser enviados em INSERT/UPDATE (gerenciados pelo banco ou herdados do PocketBase)
@@ -176,15 +178,51 @@ export const getRolloutBacklog = async () => {
   }
 }
 
+/**
+ * Move um asset para um novo estagio do Kanban.
+ * - Atualiza step_number + process_status no asset
+ * - Registra uma linha em asset_transitions (from_step, to_step, changed_by)
+ *   para manter auditoria do fluxo.
+ */
 export const updateAssetStep = async (
   assetId: string,
   stepNumber: string,
   processStatus: string,
 ) => {
-  return await updateAsset(assetId, {
+  // Le o estagio atual para gravar `from_step` na transicao
+  const { data: current } = await supabase
+    .from('assets')
+    .select('step_number')
+    .eq('id', assetId)
+    .maybeSingle()
+
+  const fromStep = current?.step_number ?? null
+
+  // Atualiza o asset
+  const updated = await updateAsset(assetId, {
     step_number: stepNumber,
     process_status: processStatus,
   })
+
+  // Registra a transicao (best-effort: nao impede a atualizacao se falhar)
+  try {
+    const { data: userRes } = await supabase.auth.getUser()
+    const changedBy = userRes?.user?.id ?? null
+
+    // Evita logar "transicao" sem mudanca real
+    if (fromStep !== stepNumber) {
+      await supabase.from('asset_transitions').insert({
+        asset_id: assetId,
+        from_step: fromStep,
+        to_step: stepNumber,
+        changed_by: changedBy,
+      })
+    }
+  } catch (err) {
+    console.warn('asset_transitions insert falhou (asset atualizado normalmente):', err)
+  }
+
+  return updated
 }
 
 export const getAssetsForKanban = async () => {
@@ -209,8 +247,8 @@ export const getAssetsForKanban = async () => {
 export const getRolloutStages = async () => {
   return ACTIVATION_STEPS.map((s, idx) => ({
     id: s.id,
-    title: s.title,
-    responsible: s.responsible,
+    name: s.name,
+    responsibility: s.responsibility,
     order: idx + 1,
   }))
 }
