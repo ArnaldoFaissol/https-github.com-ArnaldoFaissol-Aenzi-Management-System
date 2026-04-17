@@ -3,13 +3,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MapPin, Target } from 'lucide-react'
 import { getAssets } from '@/services/assets'
 import { useRealtime } from '@/hooks/use-realtime'
+import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 
-const BRAZIL_BOUNDS = {
-  minLat: -33.7,
-  maxLat: 5.2,
-  minLng: -73.9,
-  maxLng: -34.7,
-}
+// Fix for default marker icons in Leaflet when bundled by Vite
+// (we use CircleMarker below so this is only precautionary)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+delete (L.Icon.Default.prototype as any)._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+})
+
+// Centro aproximado do Brasil e zoom que mostra o pais inteiro
+const BRAZIL_CENTER: [number, number] = [-14.2, -51.9]
+const BRAZIL_ZOOM = 4
 
 export function StrategicMap() {
   const [assets, setAssets] = useState<any[]>([])
@@ -30,7 +40,6 @@ export function StrategicMap() {
     const active = assets.filter((a) => a.is_active).length
     const backlog = assets.filter((a) => !a.is_active && !a.is_in_stock).length
 
-    // Group assets with valid coordinates
     const mappedAssets = assets.filter(
       (a) =>
         typeof a.latitude === 'number' &&
@@ -42,15 +51,6 @@ export function StrategicMap() {
     return { active, backlog, mappedAssets }
   }, [assets])
 
-  const getCoordinates = (lat: number, lng: number) => {
-    const x = ((lng - BRAZIL_BOUNDS.minLng) / (BRAZIL_BOUNDS.maxLng - BRAZIL_BOUNDS.minLng)) * 100
-    const y = ((BRAZIL_BOUNDS.maxLat - lat) / (BRAZIL_BOUNDS.maxLat - BRAZIL_BOUNDS.minLat)) * 100
-    return {
-      left: `${Math.max(5, Math.min(95, x))}%`,
-      top: `${Math.max(5, Math.min(95, y))}%`,
-    }
-  }
-
   return (
     <Card className="h-full shadow-sm border-border/50 flex flex-col">
       <CardHeader className="pb-4 border-b">
@@ -59,56 +59,78 @@ export function StrategicMap() {
           Mapa Estratégico Georreferenciado
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-0 flex-1 relative bg-muted/20 min-h-[300px] overflow-hidden rounded-b-xl">
-        {/* Map Grid Background */}
-        <div
-          className="absolute inset-0 opacity-50"
-          style={{
-            backgroundImage:
-              'radial-gradient(circle at 1px 1px, hsl(var(--border)) 1px, transparent 0)',
-            backgroundSize: '24px 24px',
-          }}
-        />
+      <CardContent className="p-0 flex-1 relative min-h-[300px] overflow-hidden rounded-b-xl">
+        <MapContainer
+          center={BRAZIL_CENTER}
+          zoom={BRAZIL_ZOOM}
+          minZoom={3}
+          maxZoom={18}
+          scrollWheelZoom={false}
+          className="h-full w-full absolute inset-0 z-0"
+          style={{ background: 'hsl(var(--muted))' }}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
 
-        {stats.mappedAssets.map((asset, idx) => (
-          <div
-            key={asset.id}
-            className="absolute flex flex-col items-center animate-fade-in-up group"
-            style={{
-              ...getCoordinates(asset.latitude, asset.longitude),
-              animationDelay: `${(idx % 10) * 0.1}s`,
-            }}
-          >
-            <div className="relative flex h-8 w-8 items-center justify-center cursor-pointer">
-              {asset.is_active && (
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-30" />
-              )}
-              <div
-                className={`h-3 w-3 rounded-full border-[2px] border-background shadow-md z-10 ${asset.is_active ? 'bg-primary' : 'bg-muted-foreground'}`}
-              />
-            </div>
-            <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-semibold bg-background/95 px-2 py-0.5 rounded shadow-md mt-1 backdrop-blur-sm border border-border whitespace-nowrap z-20 absolute top-full">
-              {asset.asset_name || asset.fcu_code}
-            </span>
-          </div>
-        ))}
+          {stats.mappedAssets.map((asset) => {
+            const isActive = Boolean(asset.is_active)
+            return (
+              <CircleMarker
+                key={asset.id}
+                center={[asset.latitude, asset.longitude]}
+                radius={7}
+                pathOptions={{
+                  color: isActive ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
+                  fillColor: isActive ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
+                  fillOpacity: 0.85,
+                  weight: 2,
+                }}
+              >
+                <Popup>
+                  <div className="text-xs">
+                    <div className="font-semibold text-sm mb-1">
+                      {asset.asset_name || 'Ativo sem nome'}
+                    </div>
+                    {asset.fcu_code && (
+                      <div className="font-mono text-muted-foreground">{asset.fcu_code}</div>
+                    )}
+                    {(asset.city || asset.uf_code) && (
+                      <div className="mt-1">
+                        {asset.city}
+                        {asset.uf_code ? ` / ${asset.uf_code}` : ''}
+                      </div>
+                    )}
+                    <div className="mt-1">
+                      Status:{' '}
+                      <span className={isActive ? 'font-medium' : 'text-muted-foreground'}>
+                        {isActive ? 'Operacional' : 'Backlog'}
+                      </span>
+                    </div>
+                  </div>
+                </Popup>
+              </CircleMarker>
+            )
+          })}
+        </MapContainer>
 
         {stats.mappedAssets.length === 0 && assets.length > 0 && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground animate-fade-in">
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-background/70 z-[400] pointer-events-none">
             <Target className="h-8 w-8 mb-2 opacity-50" />
             <p className="text-sm font-medium">Ativos sem coordenadas geográficas (Lat/Lng).</p>
           </div>
         )}
 
         {assets.length === 0 && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground animate-fade-in">
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-background/70 z-[400] pointer-events-none">
             <Target className="h-8 w-8 mb-2 opacity-50" />
             <p className="text-sm font-medium">Aguardando telemetria de ativos...</p>
           </div>
         )}
 
         {/* Legend */}
-        <div className="absolute bottom-4 right-4 bg-background/95 backdrop-blur-md border p-3.5 rounded-lg shadow-sm z-10">
+        <div className="absolute bottom-4 right-4 bg-background/95 backdrop-blur-md border p-3.5 rounded-lg shadow-sm z-[500]">
           <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">
             Status da Operação
           </div>
