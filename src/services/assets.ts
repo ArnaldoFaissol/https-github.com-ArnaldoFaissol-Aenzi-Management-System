@@ -139,39 +139,7 @@ export const getRolloutBacklog = async () => {
       .select('*')
       .order('target_date', { ascending: true })
     if (error) throw error
-    if (data && data.length > 0) return data
-
-    // Fallback mock caso a tabela esteja vazia
-    return [
-      {
-        id: '1',
-        site_id: 'S-001',
-        site_name: 'Site Central',
-        region: 'SP',
-        target_date: new Date(Date.now() + 86400000 * 5).toISOString(),
-      },
-      {
-        id: '2',
-        site_id: 'S-002',
-        site_name: 'Torre Norte',
-        region: 'MG',
-        target_date: new Date(Date.now() + 86400000 * 12).toISOString(),
-      },
-      {
-        id: '3',
-        site_id: 'S-003',
-        site_name: 'Estação Sul',
-        region: 'RJ',
-        target_date: new Date(Date.now() + 86400000 * 2).toISOString(),
-      },
-      {
-        id: '4',
-        site_id: 'S-004',
-        site_name: 'Base Leste',
-        region: 'SP',
-        target_date: new Date(Date.now() + 86400000 * 40).toISOString(),
-      },
-    ]
+    return data || []
   } catch (error) {
     console.error('getRolloutBacklog error:', error)
     return []

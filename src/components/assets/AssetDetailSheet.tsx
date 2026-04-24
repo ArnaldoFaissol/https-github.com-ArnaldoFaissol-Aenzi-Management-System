@@ -696,15 +696,23 @@ export function AssetDetailSheet({ asset, open, onOpenChange, onUpdate }: Props)
                                   ? 'Auditoria'
                                   : 'Outro'}
                             </Badge>
-                            <span>{format(new Date(doc.created), 'dd/MM/yyyy')}</span>
+                            <span>
+                              {format(new Date(doc.created_at || doc.created), 'dd/MM/yyyy')}
+                            </span>
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0 ml-2">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                          <a href={getDocumentUrl(doc)} target="_blank" rel="noopener noreferrer">
-                            <Download className="h-4 w-4" />
-                          </a>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={async () => {
+                            const url = await getDocumentUrl(doc)
+                            if (url) window.open(url, '_blank', 'noopener,noreferrer')
+                          }}
+                        >
+                          <Download className="h-4 w-4" />
                         </Button>
                         {isAdmin && (
                           <Button
