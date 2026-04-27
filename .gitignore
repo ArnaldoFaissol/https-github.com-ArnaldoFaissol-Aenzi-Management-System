@@ -34,3 +34,7 @@ screenshot.png
 
 # Environment variables
 .env*
+
+# Claude Code local files
+.claude/
+
