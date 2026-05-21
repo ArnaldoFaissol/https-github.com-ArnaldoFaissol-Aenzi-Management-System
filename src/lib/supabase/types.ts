@@ -9,6 +9,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      asset_documents: {
+        Row: {
+          asset_id: string
+          category: string | null
+          created_at: string | null
+          id: string
+          mime_type: string | null
+          name: string
+          size_bytes: number | null
+          storage_path: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          asset_id: string
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          mime_type?: string | null
+          name: string
+          size_bytes?: number | null
+          storage_path: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          asset_id?: string
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          mime_type?: string | null
+          name?: string
+          size_bytes?: number | null
+          storage_path?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'asset_documents_asset_id_fkey'
+            columns: ['asset_id']
+            isOneToOne: false
+            referencedRelation: 'assets'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       asset_transitions: {
         Row: {
           asset_id: string
@@ -66,6 +110,7 @@ export type Database = {
           is_in_stock: boolean | null
           latitude: number | null
           longitude: number | null
+          monthly_revenue: number | null
           mttr_hours: number | null
           network_type: string | null
           pendency: number | null
@@ -101,6 +146,7 @@ export type Database = {
           is_in_stock?: boolean | null
           latitude?: number | null
           longitude?: number | null
+          monthly_revenue?: number | null
           mttr_hours?: number | null
           network_type?: string | null
           pendency?: number | null
@@ -136,6 +182,7 @@ export type Database = {
           is_in_stock?: boolean | null
           latitude?: number | null
           longitude?: number | null
+          monthly_revenue?: number | null
           mttr_hours?: number | null
           network_type?: string | null
           pendency?: number | null
@@ -260,6 +307,36 @@ export type Database = {
             referencedColumns: ['id']
           },
         ]
+      }
+      users: {
+        Row: {
+          avatar: string | null
+          created_at: string | null
+          email: string
+          id: string
+          name: string | null
+          role: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar?: string | null
+          created_at?: string | null
+          email: string
+          id: string
+          name?: string | null
+          role?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar?: string | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string | null
+          role?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
     }
     Views: {

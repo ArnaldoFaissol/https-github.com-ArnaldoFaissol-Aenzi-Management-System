@@ -61,7 +61,6 @@ export default function Billing() {
     (acc, curr) => acc + (Number(curr.monthly_revenue) || 0),
     0,
   )
-  const totalPendencies = assets.reduce((acc, curr) => acc + (Number(curr.pendency) || 0), 0)
 
   // Opex assumed at 30% of revenue for ROI calculation as per executive standards
   const OPEX_RATE = 0.3

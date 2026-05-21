@@ -25,7 +25,6 @@ import {
   Clock,
   DollarSign,
   MapPin,
-  Zap,
   Server,
   Network,
   Briefcase,
